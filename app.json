@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/checkin/checkin",
+    "pages/groupMatch/groupMatch",
+    "pages/aichat/aichat",
+    "pages/studyGroups/studyGroups",
+    "pages/personalCenter/personalCenter"
+  ],
+  "window": {
+    "navigationBarTitleText": "学习小组",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f1f1f1",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1aad19",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/navi/home.png",
+        "selectedIconPath": "static/navi/homefill.png"
+      },
+      {
+        "pagePath": "pages/studyGroups/studyGroups",
+        "text": "学习群组",
+        "iconPath": "static/navi/group.png",
+        "selectedIconPath": "static/navi/groupfill.png"
+      },
+      {
+        "pagePath": "pages/personalCenter/personalCenter",
+        "text": "个人中心",
+        "iconPath": "static/navi/profile.png",
+        "selectedIconPath": "static/navi/profilefill.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/studyGroups/studyGroups",
+      "style": {
+        "navigationBarTitleText": "学习群组"
+      }
+    },
+    {
+      "path": "pages/personalCenter/personalCenter",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+	{
+		"path": "pages/checkin/checkin",
+		"style": {
+			"navigationBarTitleText": "打卡"
+		}
+	},
+	{
+		"path": "pages/aichat/aichat",
+		"style": {
+			"navigationBarTitleText": "AI聊天"
+		}
+	}
+  ],
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#3cc51f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+	"list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/navi/home.png",
+        "selectedIconPath": "static/navi/homefill.png"
+      },
+      {
+        "pagePath": "pages/studyGroups/studyGroups",
+        "text": "学习群组",
+        "iconPath": "static/navi/group.png",
+        "selectedIconPath": "static/navi/groupfill.png"
+      },
+      {
+        "pagePath": "pages/personalCenter/personalCenter",
+        "text": "个人中心",
+        "iconPath": "static/navi/profile.png",
+        "selectedIconPath": "static/navi/profilefill.png"
+      }
+    ]
+  }
+}
