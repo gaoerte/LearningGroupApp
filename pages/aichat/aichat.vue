@@ -31,7 +31,7 @@
   </template>
   
   <script>
-  import { createStreamingChat } from '@/api/deepseek'; // 根据实际路径调整
+  import { createStreamingChat } from '@/api/deepseek';
   
   export default {
     data() {
@@ -52,17 +52,15 @@
         this.userInput = '';
         this.isLoading = true;
   
-        // 先添加一条空的 assistant 消息，接收流式内容
+        // 先添加一条空的 assistant 消息，用于拼接流式数据
         this.messages.push({ role: 'assistant', content: '' });
   
         try {
           await createStreamingChat(this.messages, (partialResponse) => {
             if (partialResponse) {
-              // 拼接最新流式内容到最后一条消息
               const lastIndex = this.messages.length - 1;
               this.messages[lastIndex].content += partialResponse;
-              // 触发响应式更新
-              this.messages = [...this.messages];
+              this.messages = [...this.messages]; // 触发响应式更新
             }
           });
         } catch (error) {

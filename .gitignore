@@ -27,3 +27,5 @@ yarn-error.log*
 
 # Mac OS 文件
 .DS_Store
+
+.env
