@@ -7,6 +7,24 @@
       }
     },
     {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/groupMatch/groupMatch",
+      "style": {
+        "navigationBarTitleText": "群组匹配"
+      }
+    },
+    {
+      "path": "pages/studyGroups/groupChat",
+      "style": {
+        "navigationBarTitleText": "群聊"
+      }
+    },
+    {
       "path": "pages/studyGroups/studyGroups",
       "style": {
         "navigationBarTitleText": "学习群组"
