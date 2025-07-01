@@ -293,3 +293,5 @@ create policy "Only creator can delete group tags" on group_tags for delete
 我现在想先设计一下数据结构，然后再进行测试。
 
 我想能不能加入一个创建群聊功能，只能拉取自己的好友，所以还需要好友这个数据结构，因为我要进行群聊标签搜索，所以群聊需要有标签
+
+21.17简单登录
