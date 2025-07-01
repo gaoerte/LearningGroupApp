@@ -1,0 +1,31 @@
+// utils/supabase.js
+import { createClient } from '@supabase/supabase-js';
+import config from '../config';
+
+// 初始化 Supabase 客户端
+export const initSupabaseClient = (token) => {
+  try {
+    const supabaseUrl = config.SUPABASE_URL;
+    const supabaseKey = config.SUPABASE_KEY; // 使用 SUPABASE_KEY 而不是 SUPABASE_ANON_KEY
+    
+    // 创建客户端实例
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+    
+    // 存储到全局
+    if (getApp().globalData) {
+      getApp().globalData.supabase = supabase;
+    }
+    
+    console.log('Supabase 客户端初始化成功');
+    return supabase;
+  } catch (err) {
+    console.error('初始化 Supabase 失败:', err);
+    throw new Error('Supabase 初始化失败');
+  }
+};

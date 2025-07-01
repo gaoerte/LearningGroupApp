@@ -2,36 +2,34 @@
   <view class="container">
     <!-- 底部导航栏 -->
     <view class="navbar">
-      <navigator url="/pages/home/home" class="nav-item">首页</navigator>
-      <navigator url="/pages/group/group" class="nav-item">群组</navigator>
-      <navigator url="/pages/profile/profile" class="nav-item">个人</navigator>
+      <navigator url="/pages/index/index" class="nav-item">首页</navigator>
+      <navigator url="/pages/studyGroups/studyGroups" class="nav-item">学习群组</navigator>
+      <navigator url="/pages/personalCenter/personalCenter" class="nav-item">个人中心</navigator>
     </view>
 
     <!-- 中间的按钮区域 -->
     <view class="main-buttons">
-      <button @click="goToClock" class="main-btn">打卡</button>
-      <button @click="goToMatch" class="main-btn">小组匹配</button>
-      <button @click="goToAIChat" class="main-btn">AI聊天</button>
+      <button @click="navigateToPage('/pages/checkin/checkin')" class="main-btn">打卡</button>
+      <button @click="navigateToPage('/pages/groupMatch/groupMatch')" class="main-btn">小组匹配</button>
+      <button @click="navigateToPage('/pages/aichat/aichat')" class="main-btn">AI聊天</button>
     </view>
   </view>
 </template>
 
 <script>
 export default {
+  onLaunch() {
+	  wx.cloud.init({
+		  env: 'cloud1-5gefd2w950febab8',
+		  traceUser: true,
+	  })
+  },
+
   methods: {
-    goToClock() {
+    // 跳转页面的通用方法
+    navigateToPage(url) {
       uni.navigateTo({
-        url: '/pages/clock/clock'
-      });
-    },
-    goToMatch() {
-      uni.navigateTo({
-        url: '/pages/match/match'
-      });
-    },
-    goToAIChat() {
-      uni.navigateTo({
-        url: '/pages/aichat/aichat'
+        url: url
       });
     }
   }

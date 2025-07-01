@@ -1,0 +1,23 @@
+{
+  "name": "learning-group-app",
+  "version": "1.0.0",
+  "description": "Learning Group App - uni-app project",
+  "main": "main.uts",
+  "scripts": {
+    "build:app": "uni build --platform app",
+    "build:h5": "uni build --platform h5",
+    "build:mp-weixin": "uni build --platform mp-weixin",
+    "dev:app": "uni --platform app",
+    "dev:h5": "uni --platform h5",
+    "dev:mp-weixin": "uni --platform mp-weixin"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0"
+  },
+  "browserslist": [
+    "Android >= 4.4",
+    "ios >= 9"
+  ]
+}

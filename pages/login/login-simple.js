@@ -1,16 +1,6 @@
-<template>
-  <view class="container">
-    <button @click="wechatLogin" :disabled="isLoading">
-      <text v-if="isLoading">登录中...</text>
-      <text v-else>微信登录</text>
-    </button>
-    
-    <text v-if="error" class="error">{{ error }}</text>
-  </view>
-</template>
+// 临时的简化登录页面，用于测试
+import config from "../../config";
 
-<script>
-// 临时使用简化版本进行测试
 export default {
   data() {
     return {
@@ -57,37 +47,4 @@ export default {
       }
     }
   }
-}
-</script>
-
-<style scoped>
-.container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  padding: 20px;
-}
-
-button {
-  width: 80%;
-  height: 40px;
-  background-color: #1aad19;
-  color: white;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  margin-bottom: 20px;
-}
-
-button:disabled {
-  background-color: #ccc;
-}
-
-.error {
-  color: #ff4d4f;
-  text-align: center;
-  margin-top: 10px;
-}
-</style>
+};
