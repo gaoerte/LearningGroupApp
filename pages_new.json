@@ -68,22 +68,6 @@
         "navigationBarBackgroundColor": "#0ea5e9",
         "navigationBarTextStyle": "white"
       }
-    },
-    {
-      "path": "pages/groupInfo/groupInfo",
-      "style": {
-        "navigationBarTitleText": "群组信息",
-        "navigationBarBackgroundColor": "#0ea5e9",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/groupChat/groupChat",
-      "style": {
-        "navigationBarTitleText": "群组聊天",
-        "navigationBarBackgroundColor": "#0ea5e9",
-        "navigationBarTextStyle": "white"
-      }
     }
   ],
   "tabBar": {

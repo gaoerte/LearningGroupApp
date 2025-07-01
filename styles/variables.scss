@@ -1,0 +1,295 @@
+// 设计系统变量 - Design System Variables
+// 现代化设计系统配置
+
+// ============== 颜色系统 ==============
+
+// 主色调 - Primary Colors (现代蓝紫色系)
+$primary-50: #f0f9ff;
+$primary-100: #e0f2fe;
+$primary-200: #bae6fd;
+$primary-300: #7dd3fc;
+$primary-400: #38bdf8;
+$primary-500: #0ea5e9;   // 主色
+$primary-600: #0284c7;
+$primary-700: #0369a1;
+$primary-800: #075985;
+$primary-900: #0c4a6e;
+
+// 辅助色调 - Secondary Colors (紫色系)
+$secondary-50: #faf5ff;
+$secondary-100: #f3e8ff;
+$secondary-200: #e9d5ff;
+$secondary-300: #d8b4fe;
+$secondary-400: #c084fc;
+$secondary-500: #a855f7;   // 辅助色
+$secondary-600: #9333ea;
+$secondary-700: #7c3aed;
+$secondary-800: #6b21a8;
+$secondary-900: #581c87;
+
+// 强调色调 - Accent Colors (橙色系)
+$accent-50: #fff7ed;
+$accent-100: #ffedd5;
+$accent-200: #fed7aa;
+$accent-300: #fdba74;
+$accent-400: #fb923c;
+$accent-500: #f97316;   // 强调色
+$accent-600: #ea580c;
+$accent-700: #c2410c;
+$accent-800: #9a3412;
+$accent-900: #7c2d12;
+
+// 渐变色 - Modern Gradients (简化版，兼容小程序)
+$gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #a855f7 100%);
+$gradient-secondary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$gradient-success: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+$gradient-warm: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+$gradient-cool: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+$gradient-sunset: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+
+// 语义颜色 - Semantic Colors
+
+// 成功色系 - Success Colors (绿色系)
+$success-50: #f0fdf4;
+$success-100: #dcfce7;
+$success-200: #bbf7d0;
+$success-300: #86efac;
+$success-400: #4ade80;
+$success-500: #22c55e;   // 主成功色
+$success-600: #16a34a;
+$success-700: #15803d;
+$success-800: #166534;
+$success-900: #14532d;
+
+// 警告色系 - Warning Colors (黄色系)
+$warning-50: #fffbeb;
+$warning-100: #fef3c7;
+$warning-200: #fde68a;
+$warning-300: #fcd34d;
+$warning-400: #fbbf24;
+$warning-500: #f59e0b;   // 主警告色
+$warning-600: #d97706;
+$warning-700: #b45309;
+$warning-800: #92400e;
+$warning-900: #78350f;
+
+// 错误色系 - Error Colors (红色系)
+$error-50: #fef2f2;
+$error-100: #fee2e2;
+$error-200: #fecaca;
+$error-300: #fca5a5;
+$error-400: #f87171;
+$error-500: #ef4444;     // 主错误色
+$error-600: #dc2626;
+$error-700: #b91c1c;
+$error-800: #991b1b;
+$error-900: #7f1d1d;
+
+// 信息色系 - Info Colors (蓝色系)
+$info-50: #eff6ff;
+$info-100: #dbeafe;
+$info-200: #bfdbfe;
+$info-300: #93c5fd;
+$info-400: #60a5fa;
+$info-500: #3b82f6;      // 主信息色
+$info-600: #2563eb;
+$info-700: #1d4ed8;
+$info-800: #1e40af;
+$info-900: #1e3a8a;
+
+// 兼容旧版本语义颜色
+$success: $success-500;
+$success-light: $success-100;
+$warning: $warning-500;
+$warning-light: $warning-100;
+$error: $error-500;
+$error-light: $error-100;
+$info: $info-500;
+$info-light: $info-100;
+
+// 中性色 - Neutral Colors
+$white: #ffffff;
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$gray-900: #111827;
+$black: #000000;
+
+// 表面色系 - Surface Colors (用于背景和表面)
+$surface-primary: $white;        // 主要表面颜色
+$surface-secondary: $gray-50;    // 次要表面颜色
+$surface-tertiary: $gray-100;    // 三级表面颜色
+$surface-elevated: $white;       // 悬浮表面颜色
+$surface-overlay: rgba(0, 0, 0, 0.5); // 遮罩层颜色
+
+// 边框色系 - Border Colors (用于边框和分割线)
+$border-light: $gray-200;        // 浅色边框
+$border-medium: $gray-300;       // 中等边框
+$border-dark: $gray-400;         // 深色边框
+$border-primary: $primary-200;   // 主色边框
+$border-secondary: $secondary-200; // 辅助色边框
+$border-success: rgba(34, 197, 94, 0.3); // 成功状态边框
+$border-warning: rgba(245, 158, 11, 0.3); // 警告状态边框
+$border-error: rgba(239, 68, 68, 0.3);     // 错误状态边框
+
+// 深色模式颜色
+$dark-bg: #0f172a;
+$dark-surface: #1e293b;
+$dark-card: #334155;
+$dark-text: #f1f5f9;
+$dark-text-secondary: #cbd5e1;
+
+// ============== 文本颜色系统 ==============
+
+// 文本颜色 - Text Colors
+$text-primary: $gray-900;        // 主要文本颜色
+$text-secondary: $gray-600;      // 次要文本颜色  
+$text-tertiary: $gray-400;       // 三级文本颜色
+$text-disabled: $gray-300;       // 禁用文本颜色
+$text-inverse: $white;           // 反色文本（深色背景上的白色文字）
+$text-link: $primary-500;        // 链接文本颜色
+$text-success: $success;         // 成功状态文本颜色
+$text-warning: $warning;         // 警告状态文本颜色
+$text-error: $error;             // 错误状态文本颜色
+
+// 深色模式文本颜色
+$text-primary-dark: $dark-text;
+$text-secondary-dark: $dark-text-secondary;
+$text-tertiary-dark: $gray-500;
+
+// ============== 字体系统 ==============
+
+// 字体大小 (rpx 单位)
+$text-xs: 20rpx;
+$text-sm: 24rpx;
+$text-base: 28rpx;
+$text-lg: 32rpx;
+$text-xl: 36rpx;
+$text-2xl: 42rpx;
+$text-3xl: 48rpx;
+$text-4xl: 56rpx;
+
+// 行高
+$leading-tight: 1.25;
+$leading-normal: 1.5;
+$leading-relaxed: 1.75;
+
+// 字体权重
+$font-thin: 100;
+$font-extralight: 200;
+$font-light: 300;
+$font-normal: 400;
+$font-medium: 500;
+$font-semibold: 600;
+$font-bold: 700;
+$font-extrabold: 800;
+$font-black: 900;
+
+// 行高
+$leading-tight: 1.25;
+$leading-normal: 1.5;
+$leading-relaxed: 1.75;
+
+// ============== 间距系统 ==============
+
+$space-0: 0;
+$space-1: 8rpx;
+$space-2: 16rpx;
+$space-3: 24rpx;
+$space-4: 32rpx;
+$space-5: 40rpx;
+$space-6: 48rpx;
+$space-8: 64rpx;
+$space-10: 80rpx;
+$space-12: 96rpx;
+$space-16: 128rpx;
+$space-20: 160rpx;
+$space-24: 192rpx;
+$space-32: 256rpx;
+
+// ============== 圆角系统 ==============
+
+$radius-none: 0;
+$radius-sm: 8rpx;
+$radius-md: 16rpx;
+$radius-lg: 24rpx;
+$radius-xl: 32rpx;
+$radius-2xl: 40rpx;
+$radius-full: 9999rpx;
+
+// ============== 阴影系统 ==============
+
+$shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 8px 10px rgba(0, 0, 0, 0.04);
+$shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+
+// 彩色阴影
+$shadow-primary: 0 10px 15px rgba(14, 165, 233, 0.2);
+$shadow-secondary: 0 10px 15px rgba(168, 85, 247, 0.2);
+$shadow-success: 0 10px 15px rgba(16, 185, 129, 0.2);
+$shadow-warning: 0 10px 15px rgba(245, 158, 11, 0.2);
+$shadow-error: 0 10px 15px rgba(239, 68, 68, 0.2);
+
+// ============== 动画系统 ==============
+
+// 动画时长 - Animation Duration
+$duration-100: 0.1s;
+$duration-150: 0.15s;
+$duration-200: 0.2s;
+$duration-300: 0.3s;
+$duration-500: 0.5s;
+$duration-700: 0.7s;
+$duration-1000: 1s;
+
+// 兼容旧版本的动画变量
+$duration-normal: $duration-300;  // 标准动画时长
+$duration-fast: $duration-200;    // 快速动画时长
+$duration-slow: $duration-500;    // 慢速动画时长
+
+// 过渡时长 (兼容旧版本)
+$transition-fast: 0.15s ease-out;
+$transition-normal: 0.3s ease-out;
+$transition-slow: 0.5s ease-out;
+
+// 缓动函数 - Easing Functions
+$easing-linear: linear;
+$easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+$easing-ease-in: cubic-bezier(0.4, 0, 1, 1);
+$easing-ease-out: cubic-bezier(0, 0, 0.2, 1);
+$easing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+$easing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+// 兼容旧版本的缓动变量
+$ease-out: $easing-ease-out;
+$ease-in: $easing-ease-in;
+$ease-in-out: $easing-ease-in-out;
+
+// 旧版本兼容
+$ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+$ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+
+// ============== 响应式断点 ==============
+
+$breakpoint-sm: 768rpx;
+$breakpoint-md: 1024rpx;
+$breakpoint-lg: 1280rpx;
+$breakpoint-xl: 1536rpx;
+
+// ============== Z-index 层级 ==============
+
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+$z-toast: 1080;

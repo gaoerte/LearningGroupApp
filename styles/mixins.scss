@@ -1,0 +1,218 @@
+// 通用混合器 - Common Mixins
+@import './variables.scss';
+
+// ============== 布局混合器 ==============
+
+// Flexbox 快捷方式
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// 绝对居中
+@mixin absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+// ============== 文本混合器 ==============
+
+// 文本省略
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 多行文本省略
+@mixin text-ellipsis-multi($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ============== 按钮混合器 ==============
+
+// 基础按钮样式
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-3 $space-6;
+  border-radius: $radius-lg;
+  font-weight: $font-medium;
+  font-size: $text-base;
+  line-height: $leading-tight;
+  border: none;
+  cursor: pointer;
+  transition: all $duration-normal $ease-in-out;
+  user-select: none;
+  
+  &:active {
+    transform: translateY(1rpx);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+}
+
+// 主要按钮
+@mixin button-primary {
+  @include button-base;
+  background: $gradient-primary;
+  color: white;
+  box-shadow: $shadow-primary;
+  
+  /* 小程序不支持 hover 效果 */
+}
+
+// 次要按钮
+@mixin button-secondary {
+  @include button-base;
+  background: $gray-100;
+  color: $gray-700;
+  
+  /* 小程序不支持 hover 效果 */
+}
+
+// ============== 卡片混合器 ==============
+
+// 基础卡片
+@mixin card-base {
+  background: white;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-md;
+  overflow: hidden;
+}
+
+// 现代卡片
+@mixin card-modern {
+  @include card-base;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+}
+
+// 浮动卡片
+@mixin card-floating {
+  @include card-base;
+  transition: all $duration-normal $ease-out;
+  
+  /* 小程序不支持 hover 效果 */
+}
+
+// ============== 动画混合器 ==============
+
+// 淡入动画
+@mixin fade-in($duration: $duration-normal) {
+  animation: fadeIn $duration $ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 缩放进入动画
+@mixin scale-in($duration: $duration-normal) {
+  animation: scaleIn $duration $ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// 滑入动画
+@mixin slide-in-up($duration: $duration-normal) {
+  animation: slideInUp $duration $ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(60rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ============== 响应式混合器 ==============
+// 注意：小程序不支持媒体查询，这些混合器仅用于 H5 端
+
+// 移动端样式 (小程序中忽略)
+@mixin mobile {
+  @content;
+}
+
+// 平板端样式 (小程序中忽略)
+@mixin tablet {
+  @content;
+}
+
+// 桌面端样式 (小程序中忽略)
+@mixin desktop {
+  @content;
+}
+
+// ============== 特效混合器 ==============
+
+// 玻璃态效果
+@mixin glass-morphism {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+}
+
+// 霓虹发光效果
+@mixin neon-glow($color: #0ea5e9) {
+  box-shadow: 0 0 10rpx rgba(14, 165, 233, 0.4), 0 0 20rpx rgba(14, 165, 233, 0.3), 0 0 40rpx rgba(14, 165, 233, 0.2);
+}
+
+// 脉冲动画
+@mixin pulse($color: #0ea5e9) {
+  animation: pulse 2s infinite;
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 20rpx rgba(14, 165, 233, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+    }
+  }
+}
