@@ -1,0 +1,11 @@
+{
+  "name": "supabasetest",
+  "version": "1.0.0",
+  "description": "Supabase 测试云函数",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  },
+  "author": "",
+  "license": "ISC"
+}

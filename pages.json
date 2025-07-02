@@ -76,6 +76,54 @@
         "navigationBarBackgroundColor": "#0ea5e9",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/test/cloudFunctionTest",
+      "style": {
+        "navigationBarTitleText": "云函数测试",
+        "navigationBarBackgroundColor": "#ff9500",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseTest",
+      "style": {
+        "navigationBarTitleText": "Supabase测试",
+        "navigationBarBackgroundColor": "#34c759",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseTestComplete",
+      "style": {
+        "navigationBarTitleText": "Supabase完整测试",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/navigationTest",
+      "style": {
+        "navigationBarTitleText": "页面跳转测试",
+        "navigationBarBackgroundColor": "#ff6b6b",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseTestSimple",
+      "style": {
+        "navigationBarTitleText": "Supabase连接测试",
+        "navigationBarBackgroundColor": "#74b9ff",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseTestBasic",
+      "style": {
+        "navigationBarTitleText": "Supabase基础测试",
+        "navigationBarBackgroundColor": "#0984e3",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "tabBar": {
@@ -118,8 +166,24 @@
   },
   "uniIdRouter": {},
   "condition": {
-    "current": 0,
+    "current": 7,
     "list": [
+      {
+        "name": "Supabase基础测试",
+        "path": "pages/test/supabaseTestBasic"
+      },
+      {
+        "name": "Supabase连接测试",
+        "path": "pages/test/supabaseTestSimple"
+      },
+      {
+        "name": "Supabase完整测试",
+        "path": "pages/test/supabaseTestComplete"
+      },
+      {
+        "name": "云函数测试",
+        "path": "pages/test/cloudFunctionTest"
+      },
       {
         "name": "登录页面",
         "path": "pages/login/login"
@@ -131,6 +195,10 @@
       {
         "name": "个人中心",
         "path": "pages/personalCenter/personalCenter"
+      },
+      {
+        "name": "页面跳转测试",
+        "path": "pages/test/navigationTest"
       }
     ]
   }

@@ -1,0 +1,12 @@
+{
+  "name": "supabaseProxy",
+  "version": "1.0.0",
+  "description": "Supabase 代理云函数 - 统一数据访问层",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  },
+  "engines": {
+    "node": ">=16.13.0"
+  }
+}

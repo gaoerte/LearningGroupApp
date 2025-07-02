@@ -45,6 +45,26 @@
       </ModernCard>
     </view>
     
+    <!-- 已完成打卡的状态 -->
+    <view class="checkin-completed slide-up" v-if="todayChecked">
+      <ModernCard variant="success" shadow="lg" class="completed-card">
+        <view class="completed-content">
+          <text class="completed-icon">🎉</text>
+          <text class="completed-title">今日打卡已完成</text>
+          <text class="completed-subtitle">继续保持学习的好习惯！</text>
+          
+          <ModernButton 
+            variant="primary" 
+            size="lg" 
+            @tap="goBackToHome"
+            class="back-home-button"
+          >
+            <text>返回首页</text>
+          </ModernButton>
+        </view>
+      </ModernCard>
+    </view>
+    
     <!-- 打卡历程 -->
     <view class="checkin-timeline scale-in">
       <ModernCard title="打卡历程" shadow="md" class="timeline-card">
@@ -141,6 +161,7 @@ import ModernCard from '@/components/ModernCard.vue'
 import ModernButton from '@/components/ModernButton.vue'
 import ModernInput from '@/components/ModernInput.vue'
 import Modal from '@/components/Modal.vue'
+import { notify } from '@/utils/notification.js'
 
 export default {
   name: 'CheckinPage',
@@ -207,25 +228,94 @@ export default {
     }
   },
   onLoad() {
-    this.checkTodayStatus()
-    this.loadCheckinData()
+    this.initPage()
+  },
+  onShow() {
+    this.refreshPageData()
   },
   methods: {
-    checkTodayStatus() {
-      // 检查今天是否已经打卡
-      const today = new Date().toDateString()
-      const lastCheckinDate = uni.getStorageSync('lastCheckinDate')
-      this.todayChecked = lastCheckinDate === today
+    initPage() {
+      try {
+        console.log('[打卡页] 初始化开始')
+        this.checkLoginStatus()
+        this.loadCheckinStatus()
+        this.loadCheckinHistory()
+        console.log('[打卡页] 初始化完成')
+      } catch (error) {
+        console.error('[打卡页] 初始化失败:', error)
+        this.notifyError('页面初始化失败', '请尝试重新进入页面')
+      }
     },
     
-    loadCheckinData() {
+    checkLoginStatus() {
       try {
-        const streakData = uni.getStorageSync('checkinStreak')
-        if (streakData) {
-          this.streakDays = streakData
+        const token = uni.getStorageSync('token')
+        if (!token) {
+          console.log('[打卡页] 用户未登录，提示登录')
+          uni.showModal({
+            title: '需要登录',
+            content: '使用打卡功能需要先登录，是否立即登录？',
+            confirmText: '立即登录',
+            cancelText: '取消',
+            success: (res) => {
+              if (res.confirm) {
+                uni.reLaunch({
+                  url: '/pages/login/login'
+                })
+              } else {
+                uni.switchTab({
+                  url: '/pages/index/index'
+                })
+              }
+            }
+          })
+          return false
         }
+        console.log('[打卡页] 用户已登录')
+        return true
       } catch (error) {
-        console.error('加载打卡数据失败:', error)
+        console.error('[打卡页] 检查登录状态失败:', error)
+        return false
+      }
+    },
+    
+    refreshPageData() {
+      try {
+        this.loadCheckinStatus()
+      } catch (error) {
+        console.error('刷新页面数据失败:', error)
+      }
+    },
+    
+    loadCheckinStatus() {
+      try {
+        const today = new Date().toDateString()
+        const lastCheckinDate = uni.getStorageSync('lastCheckinDate')
+        const savedStreak = uni.getStorageSync('checkinStreak')
+        
+        this.todayChecked = lastCheckinDate === today
+        this.streakDays = savedStreak || 0
+        
+        console.log('打卡状态加载:', {
+          today,
+          lastCheckinDate,
+          todayChecked: this.todayChecked,
+          streakDays: this.streakDays
+        })
+      } catch (error) {
+        console.error('加载打卡状态失败:', error)
+        this.todayChecked = false
+        this.streakDays = 0
+      }
+    },
+    
+    loadCheckinHistory() {
+      try {
+        // 这里可以从本地存储或API加载历史记录
+        // 暂时使用默认的模拟数据
+        console.log('打卡历史加载完成')
+      } catch (error) {
+        console.error('加载打卡历史失败:', error)
       }
     },
     
@@ -283,7 +373,7 @@ export default {
           content: this.checkinForm.content,
           time: '刚刚',
           type: 'my-checkin',
-          tags: this.checkinForm.tags
+          tags: [...this.checkinForm.tags]
         })
         
         // 更新本地存储
@@ -307,12 +397,20 @@ export default {
         // 触发打卡成功动画
         this.celebrateCheckin()
         
+        // 延迟1.5秒后询问是否返回首页
+        setTimeout(() => {
+          this.showReturnHomeDialog()
+        }, 1500)
+        
       } catch (error) {
         console.error('提交打卡失败:', error)
         uni.showToast({
           title: '提交失败，请重试',
           icon: 'none'
         })
+        
+        // 使用通知系统记录错误
+        this.notifyError('打卡提交失败', error.message || '网络连接异常')
       } finally {
         this.isSubmitting = false
       }
@@ -327,6 +425,51 @@ export default {
       })
     },
     
+    showReturnHomeDialog() {
+      uni.showModal({
+        title: '打卡完成',
+        content: '恭喜完成今日打卡！是否返回首页？',
+        confirmText: '返回首页',
+        cancelText: '继续浏览',
+        success: (res) => {
+          if (res.confirm) {
+            this.goBackToHome()
+          }
+        }
+      })
+    },
+    
+    goBackToHome() {
+      // 返回首页，由于首页在tabBar中，需要使用switchTab
+      uni.switchTab({
+        url: '/pages/index/index',
+        success: () => {
+          console.log('成功返回首页')
+        },
+        fail: (err) => {
+          console.error('返回首页失败:', err)
+          // 如果switchTab失败，尝试使用navigateBack
+          uni.navigateBack({
+            delta: 1,
+            fail: (backErr) => {
+              console.error('navigateBack失败:', backErr)
+              // 最后尝试使用reLaunch
+              uni.reLaunch({
+                url: '/pages/index/index',
+                fail: (relaunchErr) => {
+                  console.error('reLaunch失败:', relaunchErr)
+                  uni.showToast({
+                    title: '返回首页失败',
+                    icon: 'none'
+                  })
+                }
+              })
+            }
+          })
+        }
+      })
+    },
+    
     formatTimeToISO(date) {
       const year = date.getFullYear()
       const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -336,6 +479,37 @@ export default {
       const seconds = date.getSeconds().toString().padStart(2, '0')
       
       return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`
+    },
+    
+    // 通知相关方法
+    notifyError(title, content) {
+      try {
+        notify.error(title, content, {
+          persistent: true,
+          data: {
+            action: 'show-modal',
+            modal: {
+              title: '错误详情',
+              content: content,
+              showCancel: false
+            }
+          }
+        })
+      } catch (error) {
+        console.error('发送错误通知失败:', error)
+      }
+    },
+    
+    notifySuccess(title, content) {
+      try {
+        notify.success(title, content, {
+          persistent: false,
+          sound: true,
+          vibrate: true
+        })
+      } catch (error) {
+        console.error('发送成功通知失败:', error)
+      }
     }
   },
   
@@ -448,12 +622,47 @@ export default {
       .action-subtitle {
         font-size: $text-base;
         color: $gray-600;
+        display: block;
         margin-bottom: $space-6;
       }
       
       .checkin-button {
-        border-radius: $radius-xl;
-        box-shadow: $shadow-primary;
+        border-radius: $radius-lg;
+      }
+    }
+  }
+}
+
+.checkin-completed {
+  margin-bottom: $space-6;
+  
+  .completed-card {
+    .completed-content {
+      text-align: center;
+      
+      .completed-icon {
+        font-size: $text-6xl;
+        display: block;
+        margin-bottom: $space-4;
+      }
+      
+      .completed-title {
+        font-size: $text-xl;
+        font-weight: $font-semibold;
+        color: $gray-800;
+        display: block;
+        margin-bottom: $space-2;
+      }
+      
+      .completed-subtitle {
+        font-size: $text-base;
+        color: $gray-600;
+        display: block;
+        margin-bottom: $space-6;
+      }
+      
+      .back-home-button {
+        border-radius: $radius-lg;
       }
     }
   }
