@@ -1,9 +1,31 @@
 import { defineConfig } from 'vite';
 import uni from '@dcloudio/vite-plugin-uni';
 import { resolve } from 'path';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+import CopyPlugin from 'vite-plugin-files-copy';
+
+// 获取当前文件的目录
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// 获取环境变量，确定目标路径
+const env = process.env.NODE_ENV;
+const targetPath = './' + (env === 'development' ? 'unpackage/dist/dev' : 'unpackage/dist/build') + '/mp-weixin/cloudfunctions';
+
+console.log('🔧 云函数复制目标路径:', targetPath);
 
 export default defineConfig({
-  plugins: [uni()],
+  plugins: [
+    uni(),
+    CopyPlugin({
+      patterns: [
+        {
+          from: './cloudfunctions',
+          to: targetPath
+        },
+      ],
+    }),
+  ],
   
   // 路径别名
   resolve: {

@@ -37,18 +37,20 @@
       <!-- 测试按钮 -->
       <view class="button-group">
         <button 
-          class="test-btn primary"
+          class="test-btn primary big"
           @click="testConnection"
           :disabled="testing"
         >
-          {{ testing ? '连接中...' : '测试连接' }}
+          <text class="btn-icon">🔌</text>
+          <text class="btn-text">{{ testing ? '连接测试中...' : '测试 Supabase 连接' }}</text>
         </button>
         
         <button 
           class="test-btn secondary"
           @click="clearResults"
         >
-          清除结果
+          <text class="btn-icon">🗑️</text>
+          <text class="btn-text">清除测试结果</text>
         </button>
       </view>
 
@@ -90,8 +92,8 @@ export default {
       testing: false,
       connected: false,
       config: {
-        url: '',
-        anonKey: ''
+        url: 'https://klpseujbhwvifsfshfdx.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtscHNldWpiaHd2aWZzZnNoZmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NDA4NTUsImV4cCI6MjA2NzAxNjg1NX0.LLLc49P59cGWsCQDAXWZ58_MJgQ8q1Pmm-Bv7hUOVpI'
       },
       statusText: '未连接',
       statusIcon: '🔴',
@@ -209,46 +211,76 @@ export default {
         this.addTestResult('云函数连接', false, '开始测试云函数连接...')
         
         try {
+          // 优先尝试简化版云函数
           const cloudResult = await uni.cloud.callFunction({
-            name: 'supabaseTest',
+            name: 'supabaseProxySimple',
             data: {
-              action: 'ping',
-              timestamp: Date.now()
+              action: 'testConnection',
+              data: this.config
             }
           })
 
           if (cloudResult.result?.success) {
-            this.addTestResult('云函数连接', true, '云函数连接正常')
+            this.addTestResult('云函数连接', true, '简化版云函数连接正常')
           } else {
-            this.addTestResult('云函数连接', false, '云函数响应异常')
+            this.addTestResult('云函数连接', false, cloudResult.result?.error || '简化版云函数响应异常')
+            // 尝试完整版云函数
+            throw new Error('尝试完整版云函数')
           }
         } catch (cloudError) {
-          this.addTestResult('云函数连接', false, `云函数连接失败: ${cloudError.message}`)
+          try {
+            // 尝试完整版云函数
+            const fullResult = await uni.cloud.callFunction({
+              name: 'supabaseProxy',
+              data: {
+                action: 'testConnection',
+                data: this.config
+              }
+            })
+            
+            if (fullResult.result?.success) {
+              this.addTestResult('云函数连接', true, '完整版云函数连接正常')
+            } else {
+              this.addTestResult('云函数连接', false, fullResult.result?.error || '完整版云函数响应异常')
+            }
+          } catch (fullError) {
+            this.addTestResult('云函数连接', false, `所有云函数连接失败: ${fullError.message}`)
+          }
         }
 
-        // 3. 测试 Supabase 连接
-        this.addTestResult('Supabase连接', false, '开始测试 Supabase 连接...')
+        // 3. 测试 Supabase 直接连接
+        this.addTestResult('Supabase连接', false, '开始测试 Supabase 直接连接...')
         
         try {
-          const supabaseResult = await uni.cloud.callFunction({
-            name: 'supabaseTest',
-            data: {
-              action: 'testConnection',
-              config: this.config
-            }
+          const directResult = await new Promise((resolve, reject) => {
+            uni.request({
+              url: this.config.url + '/rest/v1/',
+              method: 'GET',
+              header: {
+                'Authorization': 'Bearer ' + this.config.anonKey,
+                'apikey': this.config.anonKey,
+                'Content-Type': 'application/json'
+              },
+              timeout: 10000,
+              success: (res) => {
+                if (res.statusCode === 200) {
+                  resolve(res)
+                } else {
+                  reject(new Error(`HTTP ${res.statusCode}`))
+                }
+              },
+              fail: (error) => {
+                reject(new Error(error.errMsg || '网络请求失败'))
+              }
+            })
           })
 
-          if (supabaseResult.result?.success) {
-            this.updateConnectionStatus(true)
-            this.addTestResult('Supabase连接', true, 'Supabase 连接成功')
-            this.saveConfig()
-          } else {
-            this.updateConnectionStatus(false, '连接失败')
-            this.addTestResult('Supabase连接', false, supabaseResult.result?.message || 'Supabase 连接失败')
-          }
-        } catch (supabaseError) {
-          this.updateConnectionStatus(false, '连接异常')
-          this.addTestResult('Supabase连接', false, `Supabase 连接异常: ${supabaseError.message}`)
+          this.updateConnectionStatus(true)
+          this.addTestResult('Supabase连接', true, `直接连接成功 (HTTP ${directResult.statusCode})`)
+          this.saveConfig()
+        } catch (directError) {
+          this.updateConnectionStatus(false, '连接失败')
+          this.addTestResult('Supabase连接', false, `直接连接失败: ${directError.message}`)
         }
 
         // 4. 显示测试总结
@@ -265,6 +297,22 @@ export default {
       } finally {
         this.testing = false
         uni.hideLoading()
+      }
+    },
+
+    /**
+     * 更新连接状态
+     */
+    updateConnectionStatus(connected, message = '') {
+      this.connected = connected
+      if (connected) {
+        this.statusText = '连接成功'
+        this.statusIcon = '✅'
+        this.statusClass = 'connected'
+      } else {
+        this.statusText = message || '连接失败'
+        this.statusIcon = '❌'
+        this.statusClass = 'disconnected'
       }
     }
   }
@@ -376,26 +424,53 @@ export default {
 }
 
 .test-btn {
-  height: 90rpx;
+  height: 100rpx;
   border-radius: 16rpx;
   font-size: 30rpx;
   font-weight: bold;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  position: relative;
+  
+  &.big {
+    height: 120rpx;
+    font-size: 32rpx;
+  }
 }
 
 .test-btn.primary {
   background: #0984e3;
   color: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(9, 132, 227, 0.3);
 }
 
 .test-btn.secondary {
   background: #00b894;
   color: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(0, 184, 148, 0.3);
 }
 
 .test-btn:disabled {
   background: #b2bec3;
   color: #ffffff;
+  box-shadow: none;
+}
+
+.test-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.btn-icon {
+  font-size: 36rpx;
+}
+
+.btn-text {
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .results-section,
@@ -458,7 +533,9 @@ export default {
 }
 
 .help-content {
-  
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
 }
 
 .help-item {

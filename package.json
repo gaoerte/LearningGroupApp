@@ -9,12 +9,13 @@
     "build:mp-weixin": "uni build --platform mp-weixin",
     "dev:app": "uni --platform app",
     "dev:h5": "uni --platform h5",
-    "dev:mp-weixin": "uni --platform mp-weixin"
-  },
-  "dependencies": {
+    "dev:mp-weixin": "uni --platform mp-weixin",
+    "copy-cloudfunctions": "node scripts/copy-cloud-functions.js",
+    "deploy:mp-weixin": "npm run copy-cloudfunctions"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0"
+    "@types/node": "^18.0.0",
+    "vite-plugin-files-copy": "^3.8.0"
   },
   "browserslist": [
     "Android >= 4.4",

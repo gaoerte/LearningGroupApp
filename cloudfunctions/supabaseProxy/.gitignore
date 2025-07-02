@@ -1,0 +1,6 @@
+# 云函数忽略文件
+node_modules/
+*.log
+.DS_Store
+.env
+.env.local

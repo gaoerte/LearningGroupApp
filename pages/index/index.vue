@@ -65,11 +65,27 @@
     
     <!-- 调试信息 -->
     <view class="debug-section" v-if="showDebug">
-      <text class="debug-title">调试信息</text>
+      <text class="debug-title">🔧 开发调试</text>
       <text class="debug-text">Token: {{ hasToken ? '已设置' : '未设置' }}</text>
       <text class="debug-text">页面加载: {{ loadTime }}</text>
-      <button class="debug-btn" @tap="toggleToken">{{ hasToken ? '清除Token' : '设置Token' }}</button>
-      <button class="debug-btn" @tap="goToTest">测试页面</button>
+      
+      <view class="debug-buttons">
+        <button class="debug-btn primary" @tap="goToSupabaseTest">
+          🔌 测试 Supabase 连接
+        </button>
+        <button class="debug-btn success" @tap="goToSupabaseStableTest">
+          🛡️ 稳定版连接测试
+        </button>
+        <button class="debug-btn secondary" @tap="goToSupabaseDemo">
+          🔗 Supabase 完整演示
+        </button>
+        <button class="debug-btn secondary" @tap="goToTest">
+          🧭 页面跳转测试
+        </button>
+        <button class="debug-btn danger" @tap="toggleToken">
+          {{ hasToken ? '🔑 清除Token' : '🔑 设置Token' }}
+        </button>
+      </view>
     </view>
   </view>
 </template>
@@ -280,6 +296,67 @@ export default {
           uni.showToast({
             title: '跳转失败',
             icon: 'none'
+          })
+        }
+      })
+    },
+    
+    goToSupabaseStableTest() {
+      console.log('[首页] 跳转到 Supabase 稳定版测试页面')
+      uni.navigateTo({
+        url: '/pages/test/supabaseStableTest',
+        success: () => {
+          console.log('[首页] 成功跳转到稳定版测试页面')
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转到稳定版测试失败:', error)
+          uni.showToast({
+            title: '页面跳转失败',
+            icon: 'none'
+          })
+        }
+      })
+    },
+    
+    goToSupabaseTest() {
+      console.log('[首页] 跳转到 Supabase 测试页面')
+      uni.navigateTo({
+        url: '/pages/test/supabaseQuickTest',
+        success: () => {
+          console.log('[首页] 成功跳转到快速测试页面')
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转失败，尝试备用页面:', error)
+          // 尝试备用页面
+          uni.navigateTo({
+            url: '/pages/test/supabaseTestSimple',
+            success: () => {
+              console.log('[首页] 成功跳转到简化测试页面')
+            },
+            fail: (error2) => {
+              console.error('[首页] 备用页面跳转也失败:', error2)
+              uni.showToast({
+                title: '页面跳转失败',
+                icon: 'error'
+              })
+            }
+          })
+        }
+      })
+    },
+    
+    goToSupabaseDemo() {
+      console.log('[首页] 跳转到 Supabase 演示页面')
+      uni.navigateTo({
+        url: '/pages/test/supabaseDemo',
+        success: () => {
+          console.log('[首页] 成功跳转到演示页面')
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转失败:', error)
+          uni.showToast({
+            title: '页面跳转失败',
+            icon: 'error'
           })
         }
       })
@@ -527,27 +604,54 @@ export default {
     font-weight: bold;
     color: #374151;
     display: block;
-    margin-bottom: 16rpx;
+    margin-bottom: 20rpx;
   }
   
   .debug-text {
-    font-size: 24rpx;
+    font-size: 26rpx;
     color: #6b7280;
     display: block;
-    margin-bottom: 8rpx;
+    margin-bottom: 12rpx;
+  }
+  
+  .debug-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 16rpx;
+    margin-top: 24rpx;
   }
   
   .debug-btn {
-    background: #6b7280;
-    color: white;
     border: none;
-    border-radius: 8rpx;
-    padding: 16rpx 24rpx;
-    font-size: 24rpx;
-    margin: 8rpx 8rpx 0 0;
+    border-radius: 12rpx;
+    padding: 24rpx 32rpx;
+    font-size: 28rpx;
+    font-weight: bold;
+    text-align: center;
+    
+    &.primary {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    &.success {
+      background: #00b894;
+      color: white;
+    }
+    
+    &.secondary {
+      background: #10b981;
+      color: white;
+    }
+    
+    &.danger {
+      background: #ef4444;
+      color: white;
+    }
     
     &:active {
       opacity: 0.8;
+      transform: scale(0.98);
     }
   }
 }

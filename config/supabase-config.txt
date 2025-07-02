@@ -1,0 +1,9 @@
+-- Supabase 项目配置信息
+-- Project URL: https://klpseujbhwvifsfshfdx.supabase.co
+-- Anon Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtscHNldWpiaHd2aWZzZnNoZmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NDA4NTUsImV4cCI6MjA2NzAxNjg1NX0.LLLc49P59cGWsCQDAXWZ58_MJgQ8q1Pmm-Bv7hUOVpI
+-- Service Role Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtscHNldWpiaHd2aWZzZnNoZmR4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTQ0MDg1NSwiZXhwIjoyMDY3MDE2ODU1fQ.-KRD7JaC50uWfTQPdnGI5ZYDZttTZcl-uKuIl6Y0jGc
+
+-- 请在 Supabase Dashboard 的 SQL Editor 中执行以下命令：
+-- 1. 访问 https://klpseujbhwvifsfshfdx.supabase.co
+-- 2. 进入 SQL Editor 
+-- 3. 复制 schema_optimized.sql 中的全部内容并执行

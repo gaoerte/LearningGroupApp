@@ -3,7 +3,7 @@
 
 const cloud = require('wx-server-sdk');
 
-// 初始化云函数
+// 初始化云函数 - 使用环境变量
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 });
@@ -11,10 +11,13 @@ cloud.init({
 // 获取云数据库实例
 const db = cloud.database();
 
-// Supabase 配置 - 请替换为您的实际配置
+// 添加详细日志用于调试
+console.log('云函数启动时间:', new Date().toISOString());
+
+// Supabase 配置 - 实际项目配置
 const SUPABASE_CONFIG = {
-  url: process.env.SUPABASE_URL || 'https://your-project-id.supabase.co',
-  serviceKey: process.env.SUPABASE_SERVICE_KEY || 'your-service-role-key'
+  url: 'https://klpseujbhwvifsfshfdx.supabase.co',
+  serviceKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtscHNldWpiaHd2aWZzZnNoZmR4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTQ0MDg1NSwiZXhwIjoyMDY3MDE2ODU1fQ.-KRD7JaC50uWfTQPdnGI5ZYDZttTZcl-uKuIl6Y0jGc'
 };
 
 /**
@@ -643,6 +646,30 @@ exports.main = async (event, context) => {
         result = await business.joinStudyGroup(data.group_id, data.join_message);
         break;
       
+      case 'testConnection':
+        // 基础连接测试
+        try {
+          const testResult = await supabase.request('GET', '');
+          result = {
+            success: true,
+            data: {
+              message: 'Supabase 连接测试成功',
+              timestamp: new Date().toISOString(),
+              config: {
+                url: SUPABASE_CONFIG.url,
+                hasKey: !!SUPABASE_CONFIG.serviceKey
+              }
+            }
+          };
+        } catch (error) {
+          result = {
+            success: false,
+            error: '连接测试失败: ' + error.message,
+            code: 'CONNECTION_TEST_FAILED'
+          };
+        }
+        break;
+      
       default:
         result = { 
           success: false, 
@@ -652,7 +679,7 @@ exports.main = async (event, context) => {
             'createUser', 'getUserProfile', 'updateUserProfile',
             'createCheckin', 'getCheckinRecords', 'likeCheckin',
             'createStudyGroup', 'getStudyGroups', 'joinStudyGroup',
-            'healthCheck'
+            'healthCheck', 'testConnection'
           ]
         };
     }
