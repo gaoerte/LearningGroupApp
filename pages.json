@@ -24,14 +24,6 @@
       }
     },
     {
-      "path": "pages/studyGroups/groupChat",
-      "style": {
-        "navigationBarTitleText": "群聊",
-        "navigationBarBackgroundColor": "#0ea5e9",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/studyGroups/studyGroups",
       "style": {
         "navigationBarTitleText": "学习群组",
