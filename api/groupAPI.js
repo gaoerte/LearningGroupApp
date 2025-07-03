@@ -1,145 +1,206 @@
 // api/groupAPI.js - 群组相关API封装
 
+import { CoreAPI } from './coreAPI.js';
+
 /**
  * 群组API类
  */
-class GroupAPI {
+export class GroupAPI {
   
   /**
-   * 通用云函数调用方法
-   * @param {Object} params - 调用参数
-   * @returns {Promise<Object>} - 返回Promise
+   * 获取用户加入的群组列表
+   * @param {String} userId - 用户ID
+   * @returns {Promise<Object>} 群组列表
    */
-  static async callCloudFunction(params) {
-    return new Promise((resolve, reject) => {
-      console.log(`[GroupAPI] 调用云函数: ${params.action}`);
+  static async getUserGroups(userId) {
+    try {
+      console.log('[GroupAPI] 获取用户群组列表，用户ID:', userId);
       
-      uni.cloud.callFunction({
-        name: 'supabaseCore',
-        data: params,
-        dataType: 'text',  // 避免自动JSON解析导致的问题
-        success: (res) => {
-          try {
-            // 安全地处理响应
-            let result = res.result;
-            
-            // 如果返回的是字符串，尝试解析JSON
-            if (typeof result === 'string') {
-              try {
-                result = JSON.parse(result);
-              } catch (parseError) {
-                console.warn(`[GroupAPI] ${params.action} 响应解析失败:`, parseError);
-              }
-            }
-            
-            if (result && result.success) {
-              console.log(`[GroupAPI] ${params.action} 成功:`, result);
-              resolve(result);
-            } else {
-              console.error(`[GroupAPI] ${params.action} 失败:`, result?.error || '未知错误');
-              reject(new Error(result?.error || `${params.action}操作失败`));
-            }
-          } catch (error) {
-            console.error(`[GroupAPI] ${params.action} 响应处理异常:`, error);
-            reject(error);
-          }
-        },
-        fail: (error) => {
-          console.error(`[GroupAPI] ${params.action} 请求失败:`, error);
-          reject(new Error(error.errMsg || error.message || '请求失败'));
-        }
-      });
-    });
-  }
-  
-  /**
-   * 创建群组
-   * @param {String} openid - 用户openid
-   * @param {Object} groupInfo - 群组信息对象
-   * @returns {Promise<Object>} - 创建结果
-   */
-  static async createGroup(openid, groupInfo) {
-    return this.callCloudFunction({
-      action: 'create',
-      openid,
-      groupInfo
-    });
+      const result = await CoreAPI.call('getUserGroups', { userId });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 获取群组列表成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '获取群组列表失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 获取群组列表失败:', error);
+      throw error;
+    }
   }
 
   /**
-   * 搜索群组
-   * @param {String} searchQuery - 搜索关键词
-   * @returns {Promise<Object>} - 搜索结果
+   * 创建新群组
+   * @param {Object} groupData - 群组数据
+   * @returns {Promise<Object>} 创建结果
    */
-  static async searchGroups(searchQuery = '') {
-    return this.callCloudFunction({
-      action: 'search',
-      searchQuery
-    });
+  static async createGroup(groupData) {
+    try {
+      console.log('[GroupAPI] 创建群组:', groupData);
+      
+      const result = await CoreAPI.call('createGroup', { groupData });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 创建群组成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '创建群组失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 创建群组失败:', error);
+      throw error;
+    }
   }
 
   /**
    * 加入群组
-   * @param {String} openid - 用户openid
    * @param {String} groupId - 群组ID
-   * @returns {Promise<Object>} - 操作结果
+   * @param {String} userId - 用户ID
+   * @param {String} inviteCode - 邀请码（可选）
+   * @returns {Promise<Object>} 加入结果
    */
-  static async joinGroup(openid, groupId) {
-    return this.callCloudFunction({
-      action: 'join',
-      openid,
-      groupId
-    });
-  }
-
-  /**
-   * 退出群组
-   * @param {String} openid - 用户openid
-   * @param {String} groupId - 群组ID
-   * @returns {Promise<Object>} - 操作结果
-   */
-  static async leaveGroup(openid, groupId) {
-    return this.callCloudFunction({
-      action: 'leave',
-      openid,
-      groupId
-    });
-  }
-
-  /**
-   * 获取用户加入的群组列表
-   * @param {String} openid - 用户openid
-   * @returns {Promise<Object>} - 群组列表
-   */
-  static async getUserGroups(openid) {
-    return this.callCloudFunction({
-      action: 'list',
-      openid
-    });
+  static async joinGroup(groupId, userId, inviteCode = null) {
+    try {
+      console.log('[GroupAPI] 加入群组:', { groupId, userId, inviteCode });
+      
+      const result = await CoreAPI.call('joinGroup', { 
+        groupId, 
+        userId, 
+        inviteCode 
+      });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 加入群组成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '加入群组失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 加入群组失败:', error);
+      throw error;
+    }
   }
 
   /**
    * 获取群组详情
    * @param {String} groupId - 群组ID
-   * @returns {Promise<Object>} - 群组详情
+   * @param {String} userId - 用户ID
+   * @returns {Promise<Object>} 群组详情
    */
-  static async getGroupInfo(groupId) {
-    return this.callCloudFunction({
-      action: 'get',
-      groupId
-    });
+  static async getGroupDetail(groupId, userId) {
+    try {
+      console.log('[GroupAPI] 获取群组详情:', { groupId, userId });
+      
+      const result = await CoreAPI.call('getGroupDetail', { groupId, userId });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 获取群组详情成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '获取群组详情失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 获取群组详情失败:', error);
+      throw error;
+    }
   }
-  
+
   /**
-   * 测试连接
-   * @param {Boolean} testDB - 是否测试数据库连接
-   * @returns {Promise<Object>} - 测试结果
+   * 搜索公开群组
+   * @param {String} keyword - 搜索关键词
+   * @param {String} category - 分类（可选）
+   * @returns {Promise<Object>} 搜索结果
    */
-  static async testConnection(testDB = false) {
-    return this.callCloudFunction({
-      action: testDB ? 'healthCheckWithDB' : 'healthCheck'
-    });
+  static async searchGroups(keyword, category = null) {
+    try {
+      console.log('[GroupAPI] 搜索群组:', { keyword, category });
+      
+      const result = await CoreAPI.call('searchGroups', { 
+        keyword, 
+        category 
+      });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 搜索群组成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '搜索群组失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 搜索群组失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取推荐群组
+   * @param {String} userId - 用户ID
+   * @returns {Promise<Object>} 推荐群组列表
+   */
+  static async getRecommendedGroups(userId) {
+    try {
+      console.log('[GroupAPI] 获取推荐群组:', userId);
+      
+      const result = await CoreAPI.call('getRecommendedGroups', { userId });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 获取推荐群组成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '获取推荐群组失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 获取推荐群组失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 退出群组
+   * @param {String} groupId - 群组ID
+   * @param {String} userId - 用户ID
+   * @returns {Promise<Object>} 退出结果
+   */
+  static async leaveGroup(groupId, userId) {
+    try {
+      console.log('[GroupAPI] 退出群组:', { groupId, userId });
+      
+      const result = await CoreAPI.call('leaveGroup', { groupId, userId });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 退出群组成功');
+        return result;
+      } else {
+        throw new Error(result.error || '退出群组失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 退出群组失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取群组成员列表
+   * @param {String} groupId - 群组ID
+   * @param {String} userId - 请求用户ID
+   * @returns {Promise<Object>} 成员列表
+   */
+  static async getGroupMembers(groupId, userId) {
+    try {
+      console.log('[GroupAPI] 获取群组成员:', { groupId, userId });
+      
+      const result = await CoreAPI.call('getGroupMembers', { groupId, userId });
+      
+      if (result.success) {
+        console.log('[GroupAPI] 获取群组成员成功:', result.data);
+        return result;
+      } else {
+        throw new Error(result.error || '获取群组成员失败');
+      }
+    } catch (error) {
+      console.error('[GroupAPI] 获取群组成员失败:', error);
+      throw error;
+    }
   }
 }
-
-export { GroupAPI };

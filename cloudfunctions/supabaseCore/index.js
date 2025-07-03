@@ -491,6 +491,359 @@ async function simpleTest(data) {
 }
 
 /**
+ * 群组功能实现
+ */
+
+/**
+ * 获取用户加入的群组列表
+ */
+async function getUserGroups(data) {
+  try {
+    const { userId } = data;
+    console.log('[supabaseCore] 获取用户群组列表, userId:', userId);
+    
+    // 模拟群组数据
+    const mockGroups = [
+      {
+        id: 'group_001',
+        name: '前端开发学习小组',
+        description: '一起学习React、Vue、JavaScript等前端技术',
+        category: 'programming',
+        memberCount: 25,
+        maxMembers: 100,
+        status: 'active',
+        color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        unreadCount: 3,
+        lastActive: '2小时前',
+        created_at: new Date().toISOString(),
+        role: 'member'
+      },
+      {
+        id: 'group_002',
+        name: '英语口语练习',
+        description: '每日英语对话练习，提升口语能力',
+        category: 'language',
+        memberCount: 18,
+        maxMembers: 50,
+        status: 'active',
+        color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        unreadCount: 7,
+        lastActive: '30分钟前',
+        created_at: new Date().toISOString(),
+        role: 'admin'
+      }
+    ];
+    
+    return {
+      success: true,
+      message: '获取群组列表成功',
+      data: {
+        groups: mockGroups,
+        total: mockGroups.length
+      }
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 获取群组列表失败:', error);
+    return {
+      success: false,
+      error: error.message || '获取群组列表失败'
+    };
+  }
+}
+
+/**
+ * 创建新群组
+ */
+async function createGroup(data) {
+  try {
+    const { groupData } = data;
+    console.log('[supabaseCore] 创建群组:', groupData);
+    
+    // 模拟创建群组
+    const newGroup = {
+      id: `group_${Date.now()}`,
+      name: groupData.name,
+      description: groupData.description,
+      category: groupData.category,
+      maxMembers: groupData.maxMembers || 100,
+      memberCount: 1,
+      status: 'active',
+      color: groupData.color || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      creator_id: groupData.creatorId,
+      role: 'admin'
+    };
+    
+    return {
+      success: true,
+      message: '创建群组成功',
+      data: newGroup
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 创建群组失败:', error);
+    return {
+      success: false,
+      error: error.message || '创建群组失败'
+    };
+  }
+}
+
+/**
+ * 加入群组
+ */
+async function joinGroup(data) {
+  try {
+    const { groupId, userId, inviteCode } = data;
+    console.log('[supabaseCore] 加入群组:', { groupId, userId, inviteCode });
+    
+    // 模拟加入群组
+    const groupMember = {
+      id: `member_${Date.now()}`,
+      group_id: groupId,
+      user_id: userId,
+      role: 'member',
+      joined_at: new Date().toISOString(),
+      status: 'active'
+    };
+    
+    return {
+      success: true,
+      message: '加入群组成功',
+      data: groupMember
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 加入群组失败:', error);
+    return {
+      success: false,
+      error: error.message || '加入群组失败'
+    };
+  }
+}
+
+/**
+ * 获取群组详情
+ */
+async function getGroupDetail(data) {
+  try {
+    const { groupId, userId } = data;
+    console.log('[supabaseCore] 获取群组详情:', { groupId, userId });
+    
+    // 模拟群组详情
+    const groupDetail = {
+      id: groupId,
+      name: '前端开发学习小组',
+      description: '一起学习React、Vue、JavaScript等前端技术，分享经验，共同进步',
+      category: 'programming',
+      memberCount: 25,
+      maxMembers: 100,
+      status: 'active',
+      color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      created_at: new Date().toISOString(),
+      creator_id: 'user_001',
+      settings: {
+        isPublic: true,
+        requireApproval: false,
+        allowMemberInvite: true
+      },
+      userRole: 'member',
+      isJoined: true
+    };
+    
+    return {
+      success: true,
+      message: '获取群组详情成功',
+      data: groupDetail
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 获取群组详情失败:', error);
+    return {
+      success: false,
+      error: error.message || '获取群组详情失败'
+    };
+  }
+}
+
+/**
+ * 搜索群组
+ */
+async function searchGroups(data) {
+  try {
+    const { keyword, category } = data;
+    console.log('[supabaseCore] 搜索群组:', { keyword, category });
+    
+    // 模拟搜索结果
+    const searchResults = [
+      {
+        id: 'group_003',
+        name: 'JavaScript高级特性',
+        description: '深入学习JavaScript的高级特性和最佳实践',
+        category: 'programming',
+        memberCount: 42,
+        maxMembers: 100,
+        status: 'active',
+        isPublic: true,
+        requireApproval: false
+      },
+      {
+        id: 'group_004',
+        name: 'React开发实战',
+        description: 'React项目实战开发，从基础到进阶',
+        category: 'programming',
+        memberCount: 38,
+        maxMembers: 80,
+        status: 'active',
+        isPublic: true,
+        requireApproval: true
+      }
+    ];
+    
+    return {
+      success: true,
+      message: '搜索群组成功',
+      data: {
+        groups: searchResults,
+        total: searchResults.length,
+        keyword: keyword
+      }
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 搜索群组失败:', error);
+    return {
+      success: false,
+      error: error.message || '搜索群组失败'
+    };
+  }
+}
+
+/**
+ * 获取推荐群组
+ */
+async function getRecommendedGroups(data) {
+  try {
+    const { userId } = data;
+    console.log('[supabaseCore] 获取推荐群组:', userId);
+    
+    // 模拟推荐群组
+    const recommendedGroups = [
+      {
+        id: 'group_005',
+        name: 'Vue.js学习交流',
+        description: 'Vue.js技术交流和项目分享',
+        category: 'programming',
+        memberCount: 33,
+        maxMembers: 100,
+        status: 'active',
+        isPublic: true,
+        recommendReason: '基于您的学习兴趣推荐'
+      },
+      {
+        id: 'group_006',
+        name: '设计师交流群',
+        description: 'UI/UX设计师的学习和交流平台',
+        category: 'design',
+        memberCount: 28,
+        maxMembers: 60,
+        status: 'active',
+        isPublic: true,
+        recommendReason: '热门群组推荐'
+      }
+    ];
+    
+    return {
+      success: true,
+      message: '获取推荐群组成功',
+      data: {
+        groups: recommendedGroups,
+        total: recommendedGroups.length
+      }
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 获取推荐群组失败:', error);
+    return {
+      success: false,
+      error: error.message || '获取推荐群组失败'
+    };
+  }
+}
+
+/**
+ * 退出群组
+ */
+async function leaveGroup(data) {
+  try {
+    const { groupId, userId } = data;
+    console.log('[supabaseCore] 退出群组:', { groupId, userId });
+    
+    // 模拟退出群组
+    return {
+      success: true,
+      message: '退出群组成功',
+      data: {
+        group_id: groupId,
+        user_id: userId,
+        left_at: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 退出群组失败:', error);
+    return {
+      success: false,
+      error: error.message || '退出群组失败'
+    };
+  }
+}
+
+/**
+ * 获取群组成员列表
+ */
+async function getGroupMembers(data) {
+  try {
+    const { groupId, userId } = data;
+    console.log('[supabaseCore] 获取群组成员:', { groupId, userId });
+    
+    // 模拟成员列表
+    const members = [
+      {
+        id: 'member_001',
+        user_id: 'user_001',
+        nickname: '小明',
+        avatar_url: '',
+        role: 'admin',
+        joined_at: '2025-01-01T00:00:00Z',
+        last_active: '2小时前',
+        checkin_days: 15
+      },
+      {
+        id: 'member_002',
+        user_id: 'user_002',
+        nickname: '小红',
+        avatar_url: '',
+        role: 'member',
+        joined_at: '2025-01-02T00:00:00Z',
+        last_active: '1天前',
+        checkin_days: 8
+      }
+    ];
+    
+    return {
+      success: true,
+      message: '获取群组成员成功',
+      data: {
+        members: members,
+        total: members.length
+      }
+    };
+  } catch (error) {
+    console.error('[supabaseCore] 获取群组成员失败:', error);
+    return {
+      success: false,
+      error: error.message || '获取群组成员失败'
+    };
+  }
+}
+
+/**
  * 主函数入口
  */
 exports.main = async (event, context) => {
@@ -553,8 +906,36 @@ exports.main = async (event, context) => {
         result = await updateUserInfo(data);
         break;
         
-      case 'simpleTest':
-        result = await simpleTest(data);
+      case 'getUserGroups':
+        result = await getUserGroups(data);
+        break;
+        
+      case 'createGroup':
+        result = await createGroup(data);
+        break;
+        
+      case 'joinGroup':
+        result = await joinGroup(data);
+        break;
+        
+      case 'getGroupDetail':
+        result = await getGroupDetail(data);
+        break;
+        
+      case 'searchGroups':
+        result = await searchGroups(data);
+        break;
+        
+      case 'getRecommendedGroups':
+        result = await getRecommendedGroups(data);
+        break;
+        
+      case 'leaveGroup':
+        result = await leaveGroup(data);
+        break;
+        
+      case 'getGroupMembers':
+        result = await getGroupMembers(data);
         break;
         
       default:

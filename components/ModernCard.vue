@@ -98,20 +98,18 @@ export default {
   transition: all $transition-normal;
   overflow: hidden;
   
-  &.hoverable:hover {
-    transform: translateY(-4rpx);
+  &.hoverable:active {
+    transform: translateY(-2rpx);
   }
   
   &.clickable {
-    cursor: pointer;
-    
     &:active {
       transform: translateY(2rpx);
     }
   }
   
   &.loading {
-    pointer-events: none;
+    opacity: 0.7;
   }
   
   // 变体样式
@@ -202,18 +200,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(4px);
   z-index: 10;
 }
 
-// 响应式设计
-@media (max-width: $breakpoint-sm) {
-  .modern-card {
-    padding: $space-4;
-    
-    .card-title {
-      font-size: $text-lg;
-    }
-  }
-}
+
 </style>

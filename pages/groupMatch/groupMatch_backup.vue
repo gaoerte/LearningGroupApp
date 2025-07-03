@@ -3,8 +3,8 @@
     <!-- 头部区域 -->
     <view class="header-section">
       <view class="header-content">
-        <text class="page-title">推荐群组</text>
-        <text class="page-subtitle">根据你的兴趣发现新的学习群组</text>
+        <text class="page-title">智能推荐</text>
+        <text class="page-subtitle">根据你的兴趣找到最合适的学习小组</text>
       </view>
       <view class="header-decoration">
         <view class="decoration-circle circle-1"></view>
@@ -253,6 +253,114 @@ export default {
       } finally {
         this.isLoading = false;
       }
+    },
+      const allGroups = {
+        '数学': [
+          { 
+            name: '高等数学研讨小组', 
+            description: '深入探讨微积分、线性代数等高等数学知识，适合大学生和数学爱好者',
+            interest: '数学',
+            level: '中级',
+            memberCount: 24,
+            createTime: '3天前创建',
+            activity: '活跃度高'
+          },
+          { 
+            name: '数学建模竞赛队', 
+            description: '准备数学建模竞赛，提升数学应用能力和团队协作能力',
+            interest: '数学',
+            level: '高级',
+            memberCount: 15,
+            createTime: '1周前创建',
+            activity: '活跃度高'
+          }
+        ],
+        '编程': [
+          { 
+            name: 'Python学习小组', 
+            description: '从零开始学习Python编程，包括基础语法、数据分析、web开发等',
+            interest: '编程',
+            level: '初级',
+            memberCount: 32,
+            createTime: '2天前创建',
+            activity: '活跃度高'
+          },
+          { 
+            name: '前端开发交流群', 
+            description: '分享前端开发技术，包括Vue、React、小程序开发等前沿技术',
+            interest: '编程',
+            level: '中级',
+            memberCount: 28,
+            createTime: '5天前创建',
+            activity: '活跃度中'
+          },
+          { 
+            name: '算法竞赛训练营', 
+            description: '提升算法编程能力，准备ACM、蓝桥杯等编程竞赛',
+            interest: '编程',
+            level: '高级',
+            memberCount: 18,
+            createTime: '1周前创建',
+            activity: '活跃度高'
+          }
+        ],
+        '英语': [
+          { 
+            name: '英语口语练习小组', 
+            description: '通过日常对话练习提升英语口语水平，营造纯英语交流环境',
+            interest: '英语',
+            level: '中级',
+            memberCount: 20,
+            createTime: '4天前创建',
+            activity: '活跃度高'
+          },
+          { 
+            name: '雅思托福备考群', 
+            description: '专注雅思托福考试备考，分享学习资料和备考经验',
+            interest: '英语',
+            level: '高级',
+            memberCount: 26,
+            createTime: '6天前创建',
+            activity: '活跃度中'
+          }
+        ],
+        '物理': [
+          { 
+            name: '大学物理学习小组', 
+            description: '探讨力学、电磁学、热学等大学物理知识，解决学习难题',
+            interest: '物理',
+            level: '中级',
+            memberCount: 16,
+            createTime: '5天前创建',
+            activity: '活跃度中'
+          }
+        ]
+      }
+      
+      this.recommendedGroups = allGroups[interest] || []
+    },
+    
+    joinGroup(group) {
+      uni.showModal({
+        title: '加入小组',
+        content: `确定要加入「${group.name}」吗？`,
+        success: (res) => {
+          if (res.confirm) {
+            uni.showToast({
+              title: `成功加入${group.name}`,
+              icon: 'success',
+              duration: 2000
+            })
+            
+            // 这里可以添加实际的加入小组逻辑
+            setTimeout(() => {
+              uni.navigateTo({
+                url: '/pages/studyGroups/studyGroups'
+              })
+            }, 2000)
+          }
+        }
+      })
     }
   }
 }

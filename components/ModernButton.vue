@@ -78,14 +78,11 @@ export default {
   justify-content: center;
   gap: $space-2;
   border: none;
-  outline: none;
-  cursor: pointer;
   font-weight: $font-medium;
   text-align: center;
   text-decoration: none;
   transition: all $transition-normal;
   overflow: hidden;
-  user-select: none;
   
   &::before {
     content: '';
@@ -105,12 +102,10 @@ export default {
   
   &.btn-disabled {
     opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
   }
   
   &.btn-loading {
-    cursor: wait;
+    opacity: 0.8;
   }
   
   &.btn-block {
@@ -128,9 +123,9 @@ export default {
     border-radius: $radius-md;
     box-shadow: $shadow-primary;
     
-    &:hover {
-      transform: translateY(-2rpx);
-      box-shadow: $shadow-lg;
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: $shadow-md;
     }
   }
   
@@ -140,9 +135,9 @@ export default {
     border-radius: $radius-md;
     box-shadow: $shadow-secondary;
     
-    &:hover {
-      transform: translateY(-2rpx);
-      box-shadow: $shadow-lg;
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: $shadow-md;
     }
   }
   
@@ -152,9 +147,8 @@ export default {
     border: 2rpx solid $primary-500;
     border-radius: $radius-md;
     
-    &:hover {
-      background: $primary-500;
-      color: $white;
+    &:active {
+      background: $primary-50;
     }
   }
   
@@ -164,7 +158,7 @@ export default {
     border: 1rpx solid $gray-300;
     border-radius: $radius-md;
     
-    &:hover {
+    &:active {
       background: $gray-100;
     }
   }
@@ -175,9 +169,9 @@ export default {
     border-radius: $radius-md;
     box-shadow: $shadow-success;
     
-    &:hover {
-      transform: translateY(-2rpx);
-      box-shadow: $shadow-lg;
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: $shadow-md;
     }
   }
   
@@ -187,9 +181,9 @@ export default {
     border-radius: $radius-md;
     box-shadow: $shadow-warning;
     
-    &:hover {
-      transform: translateY(-2rpx);
-      box-shadow: $shadow-lg;
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: $shadow-md;
     }
   }
   
@@ -199,9 +193,9 @@ export default {
     border-radius: $radius-md;
     box-shadow: $shadow-error;
     
-    &:hover {
-      transform: translateY(-2rpx);
-      box-shadow: $shadow-lg;
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: $shadow-md;
     }
   }
   
@@ -239,18 +233,4 @@ export default {
   }
 }
 
-// 响应式设计
-@media (max-width: $breakpoint-sm) {
-  .modern-button {
-    &.btn-lg {
-      font-size: $text-base;
-      min-height: 88rpx;
-    }
-    
-    &.btn-xl {
-      font-size: $text-lg;
-      min-height: 96rpx;
-    }
-  }
-}
 </style>
