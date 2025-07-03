@@ -17,20 +17,115 @@
 </template>
 
 <script>
+import { StorageManager } from './utils/storage.js';
+
 export default {
   onLaunch() {
-	  wx.cloud.init({
-		  env: 'cloud1-5gefd2w950febab8',
-		  traceUser: true,
-	  })
+    console.log('[App] 应用启动');
+    
+    // 初始化云函数环境
+    try {
+      wx.cloud.init({
+        env: 'cloud1-5gefd2w950febab8',
+        traceUser: true,
+      });
+      console.log('[App] 云函数环境初始化成功');
+    } catch (error) {
+      console.error('[App] 云函数环境初始化失败:', error);
+    }
+    
+    // 检查登录状态
+    this.checkLoginStatus();
+  },
+
+  onShow() {
+    console.log('[App] 应用显示');
+    // 应用从后台进入前台时也检查登录状态
+    this.checkLoginStatus();
   },
 
   methods: {
-    // 跳转页面的通用方法
+    /**
+     * 检查登录状态
+     */
+    checkLoginStatus() {
+      console.log('[App] 检查登录状态');
+      
+      const isLoggedIn = StorageManager.isLoggedIn();
+      const isTokenValid = StorageManager.isTokenValid();
+      
+      console.log('[App] 登录状态:', { isLoggedIn, isTokenValid });
+      
+      if (isLoggedIn && isTokenValid) {
+        console.log('[App] 用户已登录且token有效');
+        // 用户已登录，可以进行一些全局初始化操作
+        this.initUserData();
+      } else {
+        console.log('[App] 用户未登录或token已过期');
+        // 清理过期的登录信息
+        if (isLoggedIn && !isTokenValid) {
+          StorageManager.clearLoginData();
+          console.log('[App] 已清理过期的登录信息');
+        }
+      }
+    },
+    
+    /**
+     * 初始化用户数据
+     */
+    initUserData() {
+      try {
+        const userInfo = StorageManager.getLoginData();
+        console.log('[App] 初始化用户数据:', userInfo);
+        
+        // 这里可以添加一些全局用户数据初始化逻辑
+        // 例如：同步用户信息、加载用户设置等
+        
+      } catch (error) {
+        console.error('[App] 初始化用户数据失败:', error);
+      }
+    },
+    
+    /**
+     * 跳转页面的通用方法
+     */
     navigateToPage(url) {
+      // 检查是否需要登录
+      if (this.requiresAuth(url)) {
+        const isLoggedIn = StorageManager.isLoggedIn();
+        const isTokenValid = StorageManager.isTokenValid();
+        
+        if (!isLoggedIn || !isTokenValid) {
+          console.log('[App] 页面需要登录，跳转到登录页');
+          uni.navigateTo({
+            url: '/pages/login/login'
+          });
+          return;
+        }
+      }
+      
+      // 正常跳转
       uni.navigateTo({
         url: url
       });
+    },
+    
+    /**
+     * 判断页面是否需要登录
+     * @param {String} url - 页面路径
+     * @returns {Boolean} 是否需要登录
+     */
+    requiresAuth(url) {
+      // 定义需要登录的页面
+      const authRequiredPages = [
+        '/pages/personalCenter/personalCenter',
+        '/pages/checkin/checkin',
+        '/pages/studyGroups/studyGroups',
+        '/pages/groupMatch/groupMatch',
+        '/pages/aichat/aichat'
+      ];
+      
+      return authRequiredPages.some(page => url.includes(page));
     }
   }
 }

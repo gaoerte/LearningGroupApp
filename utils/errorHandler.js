@@ -418,7 +418,7 @@ class ErrorHandler {
       timestamp: new Date().toISOString(),
       stats: this.getErrorStats(),
       errors: this.errors,
-      systemInfo: uni.getSystemInfoSync(),
+      systemInfo: this.getSystemInfo(),
       config: ENV_UTILS.getConfig()
     }
     
@@ -447,6 +447,34 @@ class ErrorHandler {
     } catch (error) {
       ENV_UTILS.log.error('导出错误报告失败:', error)
       throw error
+    }
+  }
+  
+  /**
+   * 获取系统信息（使用新API替代弃用的getSystemInfoSync）
+   */
+  getSystemInfo() {
+    try {
+      // 使用新的API替代弃用的getSystemInfoSync
+      return {
+        platform: uni.getDeviceInfo().platform,
+        system: uni.getDeviceInfo().system,
+        version: uni.getAppBaseInfo().version,
+        brand: uni.getDeviceInfo().brand,
+        model: uni.getDeviceInfo().model,
+        windowHeight: uni.getWindowInfo().windowHeight,
+        windowWidth: uni.getWindowInfo().windowWidth,
+        language: uni.getAppBaseInfo().language,
+        SDKVersion: uni.getAppBaseInfo().SDKVersion
+      };
+    } catch (error) {
+      console.warn('[ErrorHandler] 获取系统信息失败，使用fallback:', error);
+      // 如果新API不可用，返回基本信息
+      return {
+        platform: 'unknown',
+        system: 'unknown',
+        version: 'unknown'
+      };
     }
   }
   

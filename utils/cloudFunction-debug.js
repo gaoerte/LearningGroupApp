@@ -120,8 +120,8 @@ class CloudFunctionDebugger {
     const diagnosis = {
       environment: {
         hasUniCloud: !!uni.cloud,
-        platform: uni.getSystemInfoSync().platform,
-        version: uni.getSystemInfoSync().version
+        platform: this.getSystemInfo().platform,
+        version: this.getSystemInfo().version
       },
       tests: []
     };
@@ -197,6 +197,24 @@ class CloudFunctionDebugger {
     
     this.log('INFO', '日志已导出');
     return report;
+  }
+
+  // 获取系统信息（使用新API）
+  getSystemInfo() {
+    try {
+      return {
+        platform: uni.getDeviceInfo().platform,
+        version: uni.getAppBaseInfo().version,
+        system: uni.getDeviceInfo().system
+      };
+    } catch (error) {
+      console.warn('[CloudFunction-Debug] 获取系统信息失败:', error);
+      return {
+        platform: 'unknown',
+        version: 'unknown',
+        system: 'unknown'
+      };
+    }
   }
 }
 

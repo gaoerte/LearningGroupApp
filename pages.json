@@ -85,6 +85,14 @@
         "navigationBarTextStyle": "white",
         "backgroundColor": "#f8f9fa"
       }
+    },
+    {
+      "path": "pages/cloudTest/cloudTest",
+      "style": {
+        "navigationBarTitleText": "云函数测试",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "globalStyle": {

@@ -71,103 +71,182 @@
 </template>
 
 <script>
+import { UserAPI } from '../../api/index.js';
+import { StorageManager } from '../../utils/storage.js';
+
 export default {
   name: 'LoginPage',
   data() {
     return {
       isLoading: false,
-      error: null
+      error: null,
+      loginType: null // 'wechat' 或 'quick'
     }
   },
+  
+  onLoad() {
+    console.log('[登录页] 页面加载');
+    this.checkExistingLogin();
+  },
+  
   methods: {
+    /**
+     * 检查是否已经登录
+     */
+    checkExistingLogin() {
+      if (StorageManager.isLoggedIn() && StorageManager.isTokenValid()) {
+        console.log('[登录页] 用户已登录且token有效，跳转首页');
+        this.navigateToHome();
+      }
+    },
+    
+    /**
+     * 微信登录
+     */
     async wechatLogin() {
-      await this.performLogin('wechat')
+      this.loginType = 'wechat';
+      await this.performLogin('wechat');
     },
     
+    /**
+     * 快速登录（测试用）
+     */
     async quickLogin() {
-      await this.performLogin('quick')
+      this.loginType = 'quick';
+      await this.performLogin('quick');
     },
     
+    /**
+     * 执行登录流程
+     * @param {String} type - 登录类型
+     */
     async performLogin(type = 'quick') {
-      this.isLoading = true
-      this.error = null
+      this.isLoading = true;
+      this.error = null;
       
       try {
-        console.log(`[登录页] 开始${type}登录`)
+        console.log(`[登录页] 开始${type}登录`);
         
-        // 模拟登录过程
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        let result;
         
-        // 生成登录信息
-        const timestamp = Date.now()
-        const token = `${type}_token_${timestamp}`
-        const userId = `${type}_user_${Math.random().toString(36).substr(2, 8)}`
+        if (type === 'wechat') {
+          // 微信登录流程
+          const code = await UserAPI.getWechatCode();
+          result = await UserAPI.wechatLogin(code);
+        } else {
+          // 快速登录流程
+          const testOpenid = `test_user_${Date.now()}`;
+          result = await UserAPI.quickLogin(testOpenid);
+        }
         
-        // 保存到本地存储
-        uni.setStorageSync('token', token)
-        uni.setStorageSync('user_id', userId)
-        uni.setStorageSync('openid', `${type}_openid_${userId}`)
-        uni.setStorageSync('user_name', type === 'wechat' ? '微信用户' : '测试用户')
-        
-        console.log(`[登录页] ${type}登录成功:`, { token, userId })
-        
-        // 显示成功提示
-        uni.showToast({
-          title: '登录成功！',
-          icon: 'success',
-          duration: 1500
-        })
-        
-        // 延迟跳转到首页
-        setTimeout(() => {
-          this.navigateToHome()
-        }, 1500)
+        if (result.success) {
+          // 保存登录信息
+          const loginData = result.data;
+          const saveResult = StorageManager.saveLoginData(loginData);
+          
+          if (saveResult) {
+            console.log(`[登录页] ${type}登录成功，用户信息已保存`);
+            
+            // 显示成功提示
+            uni.showToast({
+              title: '登录成功！',
+              icon: 'success',
+              duration: 1500
+            });
+            
+            // 延迟跳转到首页
+            setTimeout(() => {
+              this.navigateToHome();
+            }, 1500);
+          } else {
+            throw new Error('保存登录信息失败');
+          }
+        } else {
+          throw new Error(result.error || `${type}登录失败`);
+        }
         
       } catch (err) {
-        console.error(`[登录页] ${type}登录失败:`, err)
-        this.error = err.message || '登录失败，请重试'
+        console.error(`[登录页] ${type}登录失败:`, err);
+        this.error = err.message || '登录失败，请重试';
         
         uni.showToast({
           title: this.error,
           icon: 'none',
           duration: 3000
-        })
+        });
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
     
+    /**
+     * 跳转到首页
+     */
     navigateToHome() {
-      console.log('[登录页] 准备跳转到首页')
+      console.log('[登录页] 准备跳转到首页');
       
       // 优先使用 switchTab
       uni.switchTab({
         url: '/pages/index/index',
         success: () => {
-          console.log('[登录页] switchTab跳转成功')
+          console.log('[登录页] switchTab跳转成功');
         },
         fail: (err) => {
-          console.error('[登录页] switchTab失败:', err)
-          
-          // 后备方案：使用 reLaunch
+          console.error('[登录页] switchTab失败，尝试reLaunch:', err);
+          // 如果switchTab失败，使用reLaunch
           uni.reLaunch({
             url: '/pages/index/index',
             success: () => {
-              console.log('[登录页] reLaunch跳转成功')
+              console.log('[登录页] reLaunch跳转成功');
             },
             fail: (relaunchErr) => {
-              console.error('[登录页] reLaunch失败:', relaunchErr)
+              console.error('[登录页] reLaunch也失败:', relaunchErr);
+            }
+          });
+        }
+      });
+    },
+    
+    /**
+     * 跳转到首页
+     */
+    navigateToHome() {
+      console.log('[登录页] 准备跳转到首页');
+      
+      // 优先使用 switchTab
+      uni.switchTab({
+        url: '/pages/index/index',
+        success: () => {
+          console.log('[登录页] switchTab跳转成功');
+        },
+        fail: (err) => {
+          console.error('[登录页] switchTab失败，尝试reLaunch:', err);
+          // 如果switchTab失败，使用reLaunch
+          uni.reLaunch({
+            url: '/pages/index/index',
+            success: () => {
+              console.log('[登录页] reLaunch跳转成功');
+            },
+            fail: (relaunchErr) => {
+              console.error('[登录页] reLaunch也失败:', relaunchErr);
               uni.showToast({
                 title: '跳转失败，请手动返回首页',
                 icon: 'none'
-              })
+              });
             }
-          })
+          });
         }
-      })
+      });
+    },
+    
+    /**
+     * 清除错误信息
+     */
+    clearError() {
+      this.error = null;
     }
   }
-}
+};
 </script>
 
 <style lang="scss" scoped>

@@ -91,6 +91,8 @@
 </template>
 
 <script>
+import { StorageManager } from '@/utils/storage.js';
+
 export default {
   name: 'IndexPage',
   data() {
@@ -116,7 +118,16 @@ export default {
       return '晚上好'
     },
     userName() {
-      return this.hasToken ? '学习达人' : '访客'
+      if (this.hasToken) {
+        try {
+          const userInfo = StorageManager.getUserInfo();
+          return userInfo ? userInfo.nickname : '学习达人';
+        } catch (error) {
+          console.error('[首页] 获取用户名失败:', error);
+          return '学习达人';
+        }
+      }
+      return '访客';
     },
     subtitle() {
       return this.hasToken ? '今天也要继续加油哦！' : '登录后开始学习之旅'
@@ -147,22 +158,42 @@ export default {
     
     checkTokenStatus() {
       try {
-        const token = uni.getStorageSync('token')
-        this.hasToken = !!token
-        console.log('[首页] Token状态:', this.hasToken ? '存在' : '不存在')
+        // 使用 StorageManager 正确检查登录状态
+        const isLoggedIn = StorageManager.isLoggedIn();
+        const token = StorageManager.getToken();
+        
+        this.hasToken = isLoggedIn && !!token;
+        console.log('[首页] Token状态:', this.hasToken ? '存在' : '不存在');
         
         if (this.hasToken) {
-          this.loadStats()
+          console.log('[首页] Token值:', token);
+          // 加载用户信息
+          const userInfo = StorageManager.getUserInfo();
+          if (userInfo) {
+            console.log('[首页] 用户信息:', userInfo);
+          }
+          this.loadStats();
         }
       } catch (error) {
-        console.error('[首页] 检查Token失败:', error)
-        this.hasToken = false
+        console.error('[首页] 检查Token失败:', error);
+        this.hasToken = false;
       }
     },
     
     loadUserData() {
-      // 模拟加载用户数据
-      console.log('[首页] 加载用户数据')
+      try {
+        console.log('[首页] 加载用户数据');
+        
+        if (this.hasToken) {
+          const userInfo = StorageManager.getUserInfo();
+          if (userInfo) {
+            console.log('[首页] 用户信息加载成功:', userInfo.nickname);
+            // 可以在这里更新用户相关的数据
+          }
+        }
+      } catch (error) {
+        console.error('[首页] 加载用户数据失败:', error);
+      }
     },
     
     loadStats() {
@@ -372,24 +403,35 @@ export default {
     toggleToken() {
       try {
         if (this.hasToken) {
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('user_id')
-          uni.removeStorageSync('openid')
-          console.log('[首页] Token已清除')
+          // 使用 StorageManager 清除登录信息
+          const cleared = StorageManager.clearAll();
+          console.log('[首页] 登录信息已清除:', cleared);
         } else {
-          const token = 'debug_token_' + Date.now()
-          uni.setStorageSync('token', token)
-          uni.setStorageSync('user_id', 'debug_user')
-          uni.setStorageSync('checkinStreak', 5)
-          console.log('[首页] Token已设置:', token)
+          // 创建测试登录数据
+          const mockLoginData = {
+            user: {
+              id: 'debug_user_123',
+              openid: 'debug_openid_123',
+              nickname: '调试用户',
+              avatar_url: '',
+              status: 'active'
+            },
+            openid: 'debug_openid_123',
+            token: `debug_token_${Date.now()}`,
+            login_time: new Date().toISOString()
+          };
+          
+          const saved = StorageManager.saveLoginData(mockLoginData);
+          console.log('[首页] 调试Token已设置:', saved);
         }
-        this.checkTokenStatus()
+        
+        this.checkTokenStatus();
         uni.showToast({
           title: this.hasToken ? 'Token已设置' : 'Token已清除',
           icon: 'success'
-        })
+        });
       } catch (error) {
-        console.error('[首页] Token操作失败:', error)
+        console.error('[首页] Token操作失败:', error);
       }
     }
   }

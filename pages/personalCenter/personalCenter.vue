@@ -84,6 +84,8 @@
 </template>
 
 <script>
+import { StorageManager } from '@/utils/storage.js';
+
 export default {
   name: 'PersonalCenterPage',
   data() {
@@ -105,9 +107,26 @@ export default {
     loadUserInfo() {
       // 加载用户信息
       try {
-        console.log('加载用户信息')
+        console.log('[个人中心] 加载用户信息');
+        
+        // 检查是否已登录
+        if (StorageManager.isLoggedIn()) {
+          const userInfo = StorageManager.getUserInfo();
+          if (userInfo) {
+            console.log('[个人中心] 用户信息加载成功:', userInfo);
+            // 更新用户信息
+            this.userInfo.name = userInfo.nickname || '用户';
+            this.userInfo.avatar = userInfo.avatar_url || '';
+            this.userInfo.level = 'LV.1 学习新手'; // 可以根据用户数据计算等级
+          }
+        } else {
+          console.log('[个人中心] 用户未登录，跳转到登录页');
+          uni.reLaunch({
+            url: '/pages/login/login'
+          });
+        }
       } catch (error) {
-        console.error('加载用户信息失败:', error)
+        console.error('[个人中心] 加载用户信息失败:', error);
       }
     },
     
@@ -171,13 +190,26 @@ export default {
         content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
-            uni.clearStorageSync()
-            uni.reLaunch({
-              url: '/pages/login/login'
-            })
+            console.log('[个人中心] 用户确认退出登录');
+            
+            // 使用 StorageManager 清除登录信息
+            const cleared = StorageManager.clearAll();
+            console.log('[个人中心] 登录信息清除结果:', cleared);
+            
+            uni.showToast({
+              title: '已退出登录',
+              icon: 'success'
+            });
+            
+            // 跳转到登录页
+            setTimeout(() => {
+              uni.reLaunch({
+                url: '/pages/login/login'
+              });
+            }, 1000);
           }
         }
-      })
+      });
     }
   }
 }

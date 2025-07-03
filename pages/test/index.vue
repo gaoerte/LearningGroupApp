@@ -143,14 +143,20 @@ export default {
   methods: {
     initSystemInfo() {
       try {
-        const systemInfo = uni.getSystemInfoSync();
+        const deviceInfo = uni.getDeviceInfo();
+        const appInfo = uni.getAppBaseInfo();
         this.systemInfo = {
           version: '1.0.0',
           environment: process.env.NODE_ENV || 'development',
-          platform: systemInfo.platform || 'unknown'
+          platform: deviceInfo.platform || 'unknown'
         };
       } catch (error) {
         console.error('[测试页面] 获取系统信息失败:', error);
+        this.systemInfo = {
+          version: '1.0.0',
+          environment: 'unknown',
+          platform: 'unknown'
+        };
       }
     },
     

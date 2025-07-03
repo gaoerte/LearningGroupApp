@@ -1,60 +1,121 @@
 // api/userAPI.js - 用户相关API封装
 
+import { CoreAPI } from './coreAPI.js';
+
 /**
  * 用户API类
  */
 class UserAPI {
   
   /**
-   * 微信登录
+   * 微信登录 - 完整流程
+   * @param {String} code - 微信授权码
+   * @returns {Promise<Object>} 登录结果
    */
-  static async wxLogin() {
+  static async wechatLogin(code) {
+    try {
+      console.log('[UserAPI] 开始微信登录，code:', code);
+      
+      const result = await CoreAPI.call('wechatLogin', { code });
+      
+      if (result.success) {
+        console.log('[UserAPI] 微信登录成功:', result);
+        return result;
+      } else {
+        throw new Error(result.error || '微信登录失败');
+      }
+    } catch (error) {
+      console.error('[UserAPI] 微信登录失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 快速登录 - 测试用
+   * @param {String} testOpenid - 测试用openid
+   * @returns {Promise<Object>} 登录结果
+   */
+  static async quickLogin(testOpenid = null) {
+    try {
+      const openid = testOpenid || `test_user_${Date.now()}`;
+      console.log('[UserAPI] 开始快速登录，openid:', openid);
+      
+      const result = await CoreAPI.call('quickLogin', { openid });
+      
+      if (result.success) {
+        console.log('[UserAPI] 快速登录成功:', result);
+        return result;
+      } else {
+        throw new Error(result.error || '快速登录失败');
+      }
+    } catch (error) {
+      console.error('[UserAPI] 快速登录失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据openid获取用户信息
+   * @param {String} openid - 用户openid
+   * @returns {Promise<Object>} 用户信息
+   */
+  static async getUserByOpenid(openid) {
+    try {
+      console.log('[UserAPI] 获取用户信息，openid:', openid);
+      
+      const result = await CoreAPI.call('getUserByOpenid', { openid });
+      
+      if (result.success) {
+        return result;
+      } else {
+        throw new Error(result.error || '获取用户信息失败');
+      }
+    } catch (error) {
+      console.error('[UserAPI] 获取用户信息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 更新用户信息
+   * @param {String} openid - 用户openid
+   * @param {Object} userInfo - 用户信息
+   * @returns {Promise<Object>} 更新结果
+   */
+  static async updateUserInfo(openid, userInfo) {
+    try {
+      console.log('[UserAPI] 更新用户信息，openid:', openid, 'userInfo:', userInfo);
+      
+      const result = await CoreAPI.call('updateUserInfo', { openid, userInfo });
+      
+      if (result.success) {
+        return result;
+      } else {
+        throw new Error(result.error || '更新用户信息失败');
+      }
+    } catch (error) {
+      console.error('[UserAPI] 更新用户信息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取微信授权码
+   * @returns {Promise<String>} 微信授权码
+   */
+  static async getWechatCode() {
     return new Promise((resolve, reject) => {
       uni.login({
         success: (res) => {
           if (res.code) {
-            // 调用云函数进行登录
-            uni.cloud.callFunction({
-              name: 'wechatLogin',
-              data: { code: res.code },
-              success: (cloudRes) => {
-                console.log('微信登录成功:', cloudRes.result);
-                resolve(cloudRes.result);
-              },
-              fail: (error) => {
-                console.error('微信登录失败:', error);
-                reject(error);
-              }
-            });
+            console.log('[UserAPI] 获取微信授权码成功:', res.code);
+            resolve(res.code);
           } else {
             reject(new Error('获取微信授权码失败'));
           }
         },
         fail: (error) => {
-          reject(error);
-        }
-      });
-    });
-  }
-
-  /**
-   * 注册用户
-   */
-  static async register(openid, userInfo) {
-    return new Promise((resolve, reject) => {
-      uni.cloud.callFunction({
-        name: 'userProfile',
-        data: {
-          action: 'register',
-          openid: openid,
-          userInfo: userInfo
-        },
-        success: (res) => {
-          console.log('用户注册成功:', res.result);
-          resolve(res.result);
-        },
-        fail: (error) => {
-          console.error('用户注册失败:', error);
+          console.error('[UserAPI] 获取微信授权码失败:', error);
           reject(error);
         }
       });
