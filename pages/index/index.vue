@@ -302,14 +302,14 @@ export default {
     },
     
     goToSupabaseStableTest() {
-      console.log('[首页] 跳转到 Supabase 稳定版测试页面')
+      console.log('[首页] 跳转到系统测试中心')
       uni.navigateTo({
-        url: '/pages/test/supabaseStableTest',
+        url: '/pages/test/index',
         success: () => {
-          console.log('[首页] 成功跳转到稳定版测试页面')
+          console.log('[首页] 成功跳转到系统测试中心')
         },
         fail: (error) => {
-          console.error('[首页] 跳转到稳定版测试失败:', error)
+          console.error('[首页] 跳转到测试中心失败:', error)
           uni.showToast({
             title: '页面跳转失败',
             icon: 'none'
@@ -319,41 +319,31 @@ export default {
     },
     
     goToSupabaseTest() {
-      console.log('[首页] 跳转到 Supabase 测试页面')
+      console.log('[首页] 跳转到系统测试中心')
       uni.navigateTo({
-        url: '/pages/test/supabaseQuickTest',
+        url: '/pages/test/index',
         success: () => {
-          console.log('[首页] 成功跳转到快速测试页面')
+          console.log('[首页] 成功跳转到系统测试中心')
         },
         fail: (error) => {
-          console.error('[首页] 跳转失败，尝试备用页面:', error)
-          // 尝试备用页面
-          uni.navigateTo({
-            url: '/pages/test/supabaseTestSimple',
-            success: () => {
-              console.log('[首页] 成功跳转到简化测试页面')
-            },
-            fail: (error2) => {
-              console.error('[首页] 备用页面跳转也失败:', error2)
-              uni.showToast({
-                title: '页面跳转失败',
-                icon: 'error'
-              })
-            }
+          console.error('[首页] 跳转到测试中心失败:', error)
+          uni.showToast({
+            title: '页面跳转失败',
+            icon: 'error'
           })
         }
       })
     },
     
     goToSupabaseDemo() {
-      console.log('[首页] 跳转到 Supabase 演示页面')
+      console.log('[首页] 跳转到系统测试中心')
       uni.navigateTo({
-        url: '/pages/test/supabaseDemo',
+        url: '/pages/test/index',
         success: () => {
-          console.log('[首页] 成功跳转到演示页面')
+          console.log('[首页] 成功跳转到系统测试中心')
         },
         fail: (error) => {
-          console.error('[首页] 跳转失败:', error)
+          console.error('[首页] 跳转到测试中心失败:', error)
           uni.showToast({
             title: '页面跳转失败',
             icon: 'error'
@@ -363,14 +353,14 @@ export default {
     },
     
     goToTest() {
-      console.log('[首页] 跳转到测试页')
+      console.log('[首页] 跳转到系统测试中心')
       uni.navigateTo({
-        url: '/pages/test/navigationTest',
+        url: '/pages/test/index',
         success: () => {
-          console.log('[首页] 跳转测试页成功')
+          console.log('[首页] 跳转到系统测试中心成功')
         },
         fail: (err) => {
-          console.error('[首页] 跳转测试页失败:', err)
+          console.error('[首页] 跳转到测试中心失败:', err)
           uni.showToast({
             title: '跳转失败',
             icon: 'none'

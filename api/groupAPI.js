@@ -15,7 +15,7 @@ class GroupAPI {
       console.log(`[GroupAPI] 调用云函数: ${params.action}`);
       
       uni.cloud.callFunction({
-        name: 'groupManager',
+        name: 'supabaseCore',
         data: params,
         dataType: 'text',  // 避免自动JSON解析导致的问题
         success: (res) => {
@@ -142,4 +142,4 @@ class GroupAPI {
   }
 }
 
-export default GroupAPI;
+export { GroupAPI };

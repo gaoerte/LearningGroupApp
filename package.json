@@ -11,7 +11,12 @@
     "dev:h5": "uni --platform h5",
     "dev:mp-weixin": "uni --platform mp-weixin",
     "copy-cloudfunctions": "node scripts/copy-cloud-functions.js",
-    "deploy:mp-weixin": "npm run copy-cloudfunctions"
+    "deploy:mp-weixin": "npm run copy-cloudfunctions",
+    "test": "echo \"Test suite not implemented\" && exit 0",
+    "lint": "echo \"Linting not configured\" && exit 0"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
@@ -20,5 +25,13 @@
   "browserslist": [
     "Android >= 4.4",
     "ios >= 9"
-  ]
+  ],
+  "keywords": [
+    "uni-app",
+    "wechat-miniprogram",
+    "learning-group",
+    "supabase"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
 }

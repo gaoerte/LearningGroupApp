@@ -1,78 +1,133 @@
-// api/testAPI.js - API测试辅助函数
+// api/testAPI.js - 系统测试API
 
-import GroupAPI from './groupAPI';
-import { supabaseConfig } from '../config/supabase';
+import { CoreAPI } from './coreAPI.js';
 
 /**
- * API测试工具
+ * 测试API类
  */
 class TestAPI {
+  
   /**
-   * 全面测试群组API
+   * 健康检查
    */
-  static async testGroupAPI() {
-    console.log('[测试] 开始测试群组API');
-    
+  static async healthCheck() {
     try {
-      // 测试1：健康检查
-      console.log('[测试] 测试健康检查...');
-      const healthCheck = await GroupAPI.testConnection();
-      console.log('[测试] 健康检查结果:', healthCheck);
-      
-      // 测试2：数据库连接
-      console.log('[测试] 测试数据库连接...');
-      const dbCheck = await GroupAPI.testConnection(true);
-      console.log('[测试] 数据库连接测试结果:', dbCheck);
-      
-      return {
-        success: true,
-        message: '群组API测试完成',
-        healthCheck,
-        dbCheck
-      };
+      console.log('[TestAPI] 开始健康检查');
+      return await CoreAPI.call('healthCheck');
     } catch (error) {
-      console.error('[测试] 群组API测试失败:', error);
-      return {
-        success: false,
-        error: error.message,
-        details: error
-      };
+      console.error('[TestAPI] 健康检查失败:', error);
+      return { success: false, error: error.message };
     }
   }
   
   /**
-   * 测试 Supabase 连接
+   * 连接测试
+   */
+  static async connectionTest() {
+    try {
+      console.log('[TestAPI] 开始连接测试');
+      return await CoreAPI.call('connectionTest');
+    } catch (error) {
+      console.error('[TestAPI] 连接测试失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  /**
+   * 数据库测试
+   */
+  static async databaseTest() {
+    try {
+      console.log('[TestAPI] 开始数据库测试');
+      return await CoreAPI.call('databaseTest');
+    } catch (error) {
+      console.error('[TestAPI] 数据库测试失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  /**
+   * Supabase连接测试 (兼容旧接口)
    */
   static async testSupabaseConnection() {
-    console.log('[测试] 开始测试 Supabase 连接');
-    
+    return await this.connectionTest();
+  }
+  
+  /**
+   * 群组API测试 (兼容旧接口)
+   */
+  static async testGroupAPI() {
+    return await this.groupSystemTest();
+  }
+  
+  /**
+   * 用户系统测试
+   */
+  static async userSystemTest() {
     try {
-      // 导入 SupabaseConnection
-      const { default: SupabaseConnection } = await import('./supabaseConnection');
-      
-      // 创建实例
-      const supabase = new SupabaseConnection();
-      supabase.config = supabaseConfig || supabase.config;
-      
-      // 测试连接
-      const result = await supabase.testConnection();
-      console.log('[测试] Supabase连接测试结果:', result);
-      
-      return {
-        success: result.success,
-        message: '连接测试完成',
-        method: result.method,
-        data: result.data
+      console.log('[TestAPI] 开始用户系统测试');
+      const testUser = {
+        openid: 'test_' + Date.now(),
+        nickname: '测试用户',
+        email: 'test@example.com'
       };
+      return await CoreAPI.call('userSystemTest', testUser);
     } catch (error) {
-      console.error('[测试] Supabase连接测试失败:', error);
-      return {
-        success: false,
-        error: error.message,
-        details: error
-      };
+      console.error('[TestAPI] 用户系统测试失败:', error);
+      return { success: false, error: error.message };
     }
+  }
+  
+  /**
+   * 群组系统测试
+   */
+  static async groupSystemTest() {
+    try {
+      console.log('[TestAPI] 开始群组系统测试');
+      const testGroup = {
+        name: '测试学习群',
+        description: '这是一个测试群组',
+        category: 'programming'
+      };
+      return await CoreAPI.call('groupSystemTest', testGroup);
+    } catch (error) {
+      console.error('[TestAPI] 群组系统测试失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  /**
+   * 完整系统测试
+   */
+  static async fullSystemTest() {
+    console.log('[TestAPI] 开始完整系统测试');
+    const results = {};
+    
+    // 健康检查
+    results.healthCheck = await this.healthCheck();
+    
+    // 连接测试
+    results.connectionTest = await this.connectionTest();
+    
+    // 数据库测试
+    results.databaseTest = await this.databaseTest();
+    
+    // 用户系统测试
+    results.userSystemTest = await this.userSystemTest();
+    
+    // 群组系统测试
+    results.groupSystemTest = await this.groupSystemTest();
+    
+    // 统计结果
+    const totalTests = Object.keys(results).length;
+    const passedTests = Object.values(results).filter(r => r.success).length;
+    
+    return {
+      success: passedTests === totalTests,
+      summary: `${passedTests}/${totalTests} 项测试通过`,
+      details: results
+    };
   }
 }
 
-export default TestAPI;
+export { TestAPI };

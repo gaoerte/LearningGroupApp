@@ -4,7 +4,10 @@
 export const SUPABASE_CONFIG = {
   url: 'https://klpseujbhwvifsfshfdx.supabase.co',
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtscHNldWpiaHd2aWZzZnNoZmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NDA4NTUsImV4cCI6MjA2NzAxNjg1NX0.LLLc49P59cGWsCQDAXWZ58_MJgQ8q1Pmm-Bv7hUOVpI'
-}
+};
+
+// 为了兼容性，同时导出 supabaseConfig
+export const supabaseConfig = SUPABASE_CONFIG;
 
 // 初始化 Supabase 客户端（用于测试）
 export function createSupabaseClient() {

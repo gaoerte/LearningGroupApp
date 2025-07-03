@@ -133,4 +133,4 @@ class UserAPI {
   }
 }
 
-export default UserAPI;
+export { UserAPI };

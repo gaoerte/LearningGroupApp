@@ -1,0 +1,217 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#f9fafb"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/groupMatch/groupMatch",
+      "style": {
+        "navigationBarTitleText": "群组匹配",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/studyGroups/studyGroups",
+      "style": {
+        "navigationBarTitleText": "学习群组",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/personalCenter/personalCenter",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/checkin/checkin",
+      "style": {
+        "navigationBarTitleText": "学习打卡",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/aichat/aichat",
+      "style": {
+        "navigationBarTitleText": "AI学习助手",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/personalCenter/editProfile",
+      "style": {
+        "navigationBarTitleText": "编辑资料",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/groupInfo/groupInfo",
+      "style": {
+        "navigationBarTitleText": "群组信息",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/groupChat/groupChat",
+      "style": {
+        "navigationBarTitleText": "群组聊天",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/index",
+      "style": {
+        "navigationBarTitleText": "系统测试中心",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#f8f9fa"
+      }
+    },
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/navigationTest",
+      "style": {
+        "navigationBarTitleText": "页面跳转测试",
+        "navigationBarBackgroundColor": "#ff6b6b",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseDemo",
+      "style": {
+        "navigationBarTitleText": "Supabase连接演示",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseQuickTest",
+      "style": {
+        "navigationBarTitleText": "Supabase快速测试",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseTestSimple",
+      "style": {
+        "navigationBarTitleText": "Supabase连接测试",
+        "navigationBarBackgroundColor": "#74b9ff",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseTestBasic",
+      "style": {
+        "navigationBarTitleText": "Supabase基础测试",
+        "navigationBarBackgroundColor": "#0984e3",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/test/supabaseStableTest",
+      "style": {
+        "navigationBarTitleText": "Supabase稳定测试",
+        "navigationBarBackgroundColor": "#00b894",
+        "navigationBarTextStyle": "white"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#0ea5e9",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "custom": false,
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/navi/home.png",
+        "selectedIconPath": "static/navi/homefill.png"
+      },
+      {
+        "pagePath": "pages/studyGroups/studyGroups",
+        "text": "学习群组",
+        "iconPath": "static/navi/group.png",
+        "selectedIconPath": "static/navi/groupfill.png"
+      },
+      {
+        "pagePath": "pages/personalCenter/personalCenter",
+        "text": "个人中心",
+        "iconPath": "static/navi/profile.png",
+        "selectedIconPath": "static/navi/profilefill.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "学习小组",
+    "navigationBarBackgroundColor": "#0ea5e9",
+    "backgroundColor": "#f9fafb",
+    "backgroundColorTop": "#f9fafb",
+    "backgroundColorBottom": "#f9fafb",
+    "app-plus": {
+      "background": "#f9fafb"
+    }
+  },
+  "uniIdRouter": {},
+  "condition": {
+    "current": 7,
+    "list": [
+      {
+        "name": "Supabase基础测试",
+        "path": "pages/test/supabaseTestBasic"
+      },
+      {
+        "name": "Supabase连接测试",
+        "path": "pages/test/supabaseTestSimple"
+      },
+      {
+        "name": "Supabase完整测试",
+        "path": "pages/test/supabaseTestComplete"
+      },
+      {
+        "name": "云函数测试",
+        "path": "pages/test/cloudFunctionTest"
+      },
+      {
+        "name": "登录页面",
+        "path": "pages/login/login"
+      },
+      {
+        "name": "首页",
+        "path": "pages/index/index"
+      },
+      {
+        "name": "个人中心",
+        "path": "pages/personalCenter/personalCenter"
+      },
+      {
+        "name": "页面跳转测试",
+        "path": "pages/test/navigationTest"
+      }
+    ]
+  }
+}
