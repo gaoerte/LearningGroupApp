@@ -37,10 +37,28 @@
             :disabled="isSubmitting"
             block
             @tap="openCheckinModal"
+            @click="openCheckinModal"
             class="checkin-button"
+            style="pointer-events: auto; z-index: 10;"
           >
             <text>{{ isSubmitting ? '提交中...' : '开始打卡' }}</text>
           </ModernButton>
+
+          <!-- 备用原生按钮 -->
+          <button 
+            class="native-checkin-button"
+            type="primary"
+            :disabled="isSubmitting"
+            @tap="openCheckinModal"
+            @click="openCheckinModal"
+          >
+            {{ isSubmitting ? '提交中...' : '备用按钮：开始打卡' }}
+          </button>
+
+          <!-- 调试信息 -->
+          <view class="debug-info" style="margin-top: 16rpx; font-size: 24rpx; color: #666;">
+            <text>调试：todayChecked={{ todayChecked }}, isSubmitting={{ isSubmitting }}, isModalVisible={{ isModalVisible }}</text>
+          </view>
         </view>
       </ModernCard>
     </view>
@@ -69,11 +87,14 @@
     <view class="checkin-timeline scale-in">
       <ModernCard title="打卡历程" shadow="md" class="timeline-card">
         <view class="timeline-list">
-          <view class="timeline-item" v-for="(checkin, index) in sortedCheckins" :key="index">
+          <view class="timeline-item" v-for="(checkin, index) in sortedCheckins" :key="index" :class="{ 'my-checkin': checkin.type === 'my-checkin' }">
             <view class="timeline-dot" :class="checkin.type"></view>
             <view class="timeline-content">
               <view class="timeline-header">
-                <text class="timeline-name">{{ checkin.name }}</text>
+                <view class="timeline-name-wrapper">
+                  <text class="timeline-name">{{ checkin.name }}</text>
+                  <text v-if="checkin.type === 'my-checkin' && checkin.time === '刚刚'" class="new-badge">新</text>
+                </view>
                 <text class="timeline-time">{{ checkin.time }}</text>
               </view>
               <text class="timeline-text">{{ checkin.content }}</text>
@@ -91,41 +112,46 @@
       </ModernCard>
     </view>
     
-    <!-- 打卡弹窗 -->
-    <Modal v-if="isModalVisible" @close="closeModal" class="checkin-modal">
-      <view class="modal-content">
-        <text class="modal-title">今日学习打卡</text>
+    <!-- 打卡弹窗 - 简化版直接实现 -->
+    <view v-if="isModalVisible" class="inline-modal-mask" @tap="closeModal">
+      <view class="inline-modal-content" @tap.stop>
+        <view class="inline-modal-header">
+          <text class="inline-modal-title">今日学习打卡</text>
+          <text class="inline-modal-close" @tap="closeModal">×</text>
+        </view>
         
-        <view class="form-section">
-          <ModernInput
-            v-model="checkinForm.content"
-            label="学习内容"
-            placeholder="分享今天学了什么..."
-            :maxlength="200"
-            class="content-input"
-          />
+        <view class="inline-form-section">
+          <view class="inline-form-group">
+            <text class="inline-form-label">学习内容</text>
+            <textarea 
+              class="inline-form-textarea"
+              v-model="checkinForm.content"
+              placeholder="分享今天学了什么..."
+              maxlength="200"
+            />
+          </view>
           
-          <view class="mood-section">
-            <text class="mood-label">今日心情</text>
-            <view class="mood-options">
+          <view class="inline-mood-section">
+            <text class="inline-mood-label">今日心情</text>
+            <view class="inline-mood-options">
               <view 
-                class="mood-item" 
+                class="inline-mood-item" 
                 :class="{ active: checkinForm.mood === mood.value }"
                 v-for="mood in moodOptions" 
                 :key="mood.value"
                 @tap="selectMood(mood.value)"
               >
-                <text class="mood-emoji">{{ mood.emoji }}</text>
-                <text class="mood-text">{{ mood.label }}</text>
+                <text class="inline-mood-emoji">{{ mood.emoji }}</text>
+                <text class="inline-mood-text">{{ mood.label }}</text>
               </view>
             </view>
           </view>
           
-          <view class="tags-section">
-            <text class="tags-label">学习标签</text>
-            <view class="tags-options">
+          <view class="inline-tags-section">
+            <text class="inline-tags-label">学习标签</text>
+            <view class="inline-tags-options">
               <view 
-                class="tag-item" 
+                class="inline-tag-item" 
                 :class="{ active: checkinForm.tags.includes(tag) }"
                 v-for="tag in tagOptions" 
                 :key="tag"
@@ -137,22 +163,20 @@
           </view>
         </view>
         
-        <view class="modal-actions">
-          <ModernButton variant="outline" @tap="closeModal" class="cancel-btn">
+        <view class="inline-modal-actions">
+          <button class="inline-cancel-btn" @tap="closeModal">
             取消
-          </ModernButton>
-          <ModernButton 
-            variant="primary" 
-            :loading="isSubmitting"
+          </button>
+          <button 
+            class="inline-submit-btn" 
             :disabled="!checkinForm.content.trim() || isSubmitting"
             @tap="submitCheckin"
-            class="submit-btn"
           >
             {{ isSubmitting ? '提交中...' : '完成打卡' }}
-          </ModernButton>
+          </button>
         </view>
       </view>
-    </Modal>
+    </view>
   </view>
 </template>
 
@@ -160,16 +184,17 @@
 import ModernCard from '../../components/ModernCard.vue'
 import ModernButton from '../../components/ModernButton.vue'
 import ModernInput from '../../components/ModernInput.vue'
-import Modal from '../../components/Modal.vue'
-import { notify } from '../../utils/notification.js'
+// import Modal from '../../components/Modal.vue' // 使用内联弹窗替代
+import { StorageManager } from '../../utils/storage.js'
+// import { notify } from '../../utils/notification.js' // 暂时注释掉，避免依赖问题
 
 export default {
   name: 'CheckinPage',
   components: {
     ModernCard,
     ModernButton,
-    ModernInput,
-    Modal
+    ModernInput
+    // Modal // 不再使用
   },
   data() {
     return {
@@ -221,8 +246,27 @@ export default {
   computed: {
     sortedCheckins() {
       return this.checkins.slice().sort((a, b) => {
-        // 简单的时间排序，实际项目中应该使用真实的时间戳
-        const timeOrder = { '2小时前': 3, '5小时前': 2, '1天前': 1 }
+        // 优先显示用户自己的打卡记录（刚刚提交的）
+        if (a.type === 'my-checkin' && b.type !== 'my-checkin') {
+          return -1 // a 排在前面
+        }
+        if (b.type === 'my-checkin' && a.type !== 'my-checkin') {
+          return 1 // b 排在前面
+        }
+        
+        // 如果都是用户打卡或都不是，按时间排序
+        const timeOrder = { 
+          '刚刚': 10, 
+          '1分钟前': 9,
+          '5分钟前': 8,
+          '10分钟前': 7,
+          '30分钟前': 6,
+          '1小时前': 5,
+          '2小时前': 4, 
+          '5小时前': 3, 
+          '1天前': 2,
+          '2天前': 1
+        }
         return (timeOrder[b.time] || 0) - (timeOrder[a.time] || 0)
       })
     }
@@ -249,8 +293,13 @@ export default {
     
     checkLoginStatus() {
       try {
-        const token = uni.getStorageSync('token')
-        if (!token) {
+        // 使用 StorageManager 正确检查登录状态
+        const isLoggedIn = StorageManager.isLoggedIn();
+        const token = StorageManager.getToken();
+        
+        console.log('[打卡页] 登录状态检查:', { isLoggedIn, hasToken: !!token });
+        
+        if (!isLoggedIn || !token) {
           console.log('[打卡页] 用户未登录，提示登录')
           uni.showModal({
             title: '需要登录',
@@ -271,7 +320,8 @@ export default {
           })
           return false
         }
-        console.log('[打卡页] 用户已登录')
+        
+        console.log('[打卡页] 用户已登录，token:', token)
         return true
       } catch (error) {
         console.error('[打卡页] 检查登录状态失败:', error)
@@ -320,15 +370,35 @@ export default {
     },
     
     openCheckinModal() {
+      console.log('[打卡页] 点击开始打卡按钮')
+      console.log('[打卡页] 当前状态:', {
+        todayChecked: this.todayChecked,
+        isSubmitting: this.isSubmitting,
+        isModalVisible: this.isModalVisible
+      })
+      
+      if (this.isSubmitting) {
+        console.log('[打卡页] 正在提交中，忽略点击')
+        return
+      }
+      
+      if (this.todayChecked) {
+        console.log('[打卡页] 今日已打卡，忽略点击')
+        return
+      }
+      
       this.isModalVisible = true
+      console.log('[打卡页] 弹窗已显示:', this.isModalVisible)
     },
     
     closeModal() {
+      console.log('[打卡页] 关闭弹窗')
       this.isModalVisible = false
       this.resetForm()
     },
     
     resetForm() {
+      console.log('[打卡页] 重置表单')
       this.checkinForm = {
         content: '',
         mood: '',
@@ -367,14 +437,22 @@ export default {
         // 获取当前时间
         const currentTime = this.formatTimeToISO(new Date())
         
-        // 添加新的打卡记录
-        this.checkins.unshift({
+        // 添加新的打卡记录到列表最前面
+        const newCheckin = {
           name: '我',
           content: this.checkinForm.content,
           time: '刚刚',
           type: 'my-checkin',
-          tags: [...this.checkinForm.tags]
-        })
+          tags: [...this.checkinForm.tags],
+          mood: this.checkinForm.mood,
+          timestamp: Date.now() // 添加时间戳用于准确排序
+        }
+        
+        // 使用 unshift 添加到数组开头，确保显示在最前面
+        this.checkins.unshift(newCheckin)
+        
+        console.log('[打卡页] 新打卡记录已添加:', newCheckin)
+        console.log('[打卡页] 当前打卡记录数量:', this.checkins.length)
         
         // 更新本地存储
         const today = new Date().toDateString()
@@ -484,16 +562,12 @@ export default {
     // 通知相关方法
     notifyError(title, content) {
       try {
-        notify.error(title, content, {
-          persistent: true,
-          data: {
-            action: 'show-modal',
-            modal: {
-              title: '错误详情',
-              content: content,
-              showCancel: false
-            }
-          }
+        console.error('[打卡页] 错误:', title, content)
+        // 暂时使用 uni.showModal 替代 notify
+        uni.showModal({
+          title: title || '错误',
+          content: content || '发生未知错误',
+          showCancel: false
         })
       } catch (error) {
         console.error('发送错误通知失败:', error)
@@ -502,10 +576,11 @@ export default {
     
     notifySuccess(title, content) {
       try {
-        notify.success(title, content, {
-          persistent: false,
-          sound: true,
-          vibrate: true
+        console.log('[打卡页] 成功:', title, content)
+        // 暂时使用 uni.showToast 替代 notify
+        uni.showToast({
+          title: title || '操作成功',
+          icon: 'success'
         })
       } catch (error) {
         console.error('发送成功通知失败:', error)
@@ -524,47 +599,58 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
+// 基础变量定义
+$primary-color: #667eea;
+$success-color: #10b981;
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$white: #ffffff;
 
 .checkin-container {
   min-height: 100vh;
   background: $gray-50;
-  padding: $space-4;
+  padding: 32rpx;
 }
 
 .checkin-header {
-  margin-bottom: $space-6;
+  margin-bottom: 48rpx;
   
   .status-card {
-    background: $gradient-primary;
-    border-radius: $radius-xl;
-    padding: $space-6;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 24rpx;
+    padding: 48rpx;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: $shadow-primary;
+    box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.15);
     
     .status-content {
       flex: 1;
       
       .status-title {
         color: rgba(255, 255, 255, 0.9);
-        font-size: $text-sm;
-        font-weight: $font-normal;
+        font-size: 28rpx;
+        font-weight: normal;
         display: block;
-        margin-bottom: $space-2;
+        margin-bottom: 16rpx;
       }
       
       .status-info {
         display: flex;
         align-items: center;
-        gap: $space-2;
-        margin-bottom: $space-2;
+        gap: 16rpx;
+        margin-bottom: 16rpx;
         
         .status-text {
           color: $white;
-          font-size: $text-xl;
-          font-weight: $font-bold;
+          font-size: 40rpx;
+          font-weight: bold;
           
           &.completed {
             color: #4ade80;
@@ -572,97 +658,111 @@ export default {
         }
         
         .status-emoji {
-          font-size: $text-2xl;
+          font-size: 48rpx;
         }
       }
       
       .status-subtitle {
         color: rgba(255, 255, 255, 0.8);
-        font-size: $text-sm;
+        font-size: 28rpx;
       }
     }
     
     .streak-info {
       text-align: center;
-      padding: $space-3;
+      padding: 24rpx;
       background: rgba(255, 255, 255, 0.15);
-      border-radius: $radius-lg;
+      border-radius: 16rpx;
       
       .streak-number {
         color: $white;
-        font-size: $text-3xl;
-        font-weight: $font-bold;
+        font-size: 64rpx;
+        font-weight: bold;
         display: block;
-        margin-bottom: $space-1;
+        margin-bottom: 8rpx;
       }
       
       .streak-label {
         color: rgba(255, 255, 255, 0.8);
-        font-size: $text-xs;
+        font-size: 24rpx;
       }
     }
   }
 }
 
 .checkin-action {
-  margin-bottom: $space-6;
+  margin-bottom: 48rpx;
   
   .action-card {
     .action-content {
       text-align: center;
       
       .action-title {
-        font-size: $text-xl;
-        font-weight: $font-semibold;
+        font-size: 40rpx;
+        font-weight: 600;
         color: $gray-800;
         display: block;
-        margin-bottom: $space-2;
+        margin-bottom: 16rpx;
       }
       
       .action-subtitle {
-        font-size: $text-base;
+        font-size: 32rpx;
         color: $gray-600;
         display: block;
-        margin-bottom: $space-6;
+        margin-bottom: 48rpx;
       }
       
       .checkin-button {
-        border-radius: $radius-lg;
+        border-radius: 16rpx;
+        width: 100%;
+        margin-bottom: 16rpx;
+      }
+
+      .native-checkin-button {
+        width: 100%;
+        height: 80rpx;
+        border-radius: 16rpx;
+        background: #f39c12;
+        color: white;
+        font-size: 32rpx;
+        border: none;
+        margin-bottom: 16rpx;
       }
     }
   }
 }
 
 .checkin-completed {
-  margin-bottom: $space-6;
+  margin-bottom: 48rpx;
   
   .completed-card {
     .completed-content {
       text-align: center;
       
       .completed-icon {
-        font-size: $text-6xl;
+        font-size: 120rpx;
         display: block;
-        margin-bottom: $space-4;
+        margin-bottom: 32rpx;
       }
       
       .completed-title {
-        font-size: $text-xl;
-        font-weight: $font-semibold;
+        font-size: 40rpx;
+        font-weight: 600;
         color: $gray-800;
         display: block;
-        margin-bottom: $space-2;
+        margin-bottom: 16rpx;
       }
       
       .completed-subtitle {
-        font-size: $text-base;
+        font-size: 32rpx;
         color: $gray-600;
         display: block;
-        margin-bottom: $space-6;
+        margin-bottom: 48rpx;
       }
       
       .back-home-button {
-        border-radius: $radius-lg;
+        border-radius: 16rpx;
+        width: 100%;
       }
     }
   }
@@ -674,25 +774,42 @@ export default {
       .timeline-item {
         position: relative;
         display: flex;
-        padding: $space-4 0;
+        padding: 32rpx 0;
         border-bottom: 1px solid $gray-200;
         
         &:last-child {
           border-bottom: none;
         }
         
+        // 用户自己的打卡记录特殊样式
+        &.my-checkin {
+          background: rgba(102, 126, 234, 0.05);
+          margin: 0 -32rpx;
+          padding: 32rpx;
+          border-radius: 12rpx;
+          border: 2rpx solid rgba(102, 126, 234, 0.2);
+          
+          .timeline-name {
+            color: $primary-color;
+            font-weight: bold;
+          }
+        }
+        
         .timeline-dot {
           width: 24rpx;
           height: 24rpx;
-          border-radius: $radius-full;
-          margin-right: $space-4;
-          margin-top: $space-1;
+          border-radius: 50%;
+          margin-right: 32rpx;
+          margin-top: 8rpx;
           flex-shrink: 0;
           
-          &.study { background: $primary-500; }
-          &.practice { background: $success; }
-          &.review { background: $warning; }
-          &.my-checkin { background: $secondary-500; }
+          &.study { background: $primary-color; }
+          &.practice { background: $success-color; }
+          &.review { background: #f59e0b; }
+          &.my-checkin { 
+            background: $primary-color; 
+            box-shadow: 0 0 0 4rpx rgba(102, 126, 234, 0.2);
+          }
         }
         
         .timeline-content {
@@ -702,38 +819,54 @@ export default {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: $space-2;
+            margin-bottom: 16rpx;
+            
+            .timeline-name-wrapper {
+              display: flex;
+              align-items: center;
+              gap: 12rpx;
+            }
             
             .timeline-name {
-              font-size: $text-base;
-              font-weight: $font-semibold;
+              font-size: 32rpx;
+              font-weight: 600;
               color: $gray-800;
             }
             
+            .new-badge {
+              background: #ff6b6b;
+              color: white;
+              font-size: 20rpx;
+              padding: 4rpx 12rpx;
+              border-radius: 12rpx;
+              font-weight: bold;
+              animation: pulse 2s infinite;
+            }
+            
             .timeline-time {
-              font-size: $text-xs;
+              font-size: 24rpx;
               color: $gray-500;
             }
           }
           
           .timeline-text {
-            font-size: $text-sm;
+            font-size: 28rpx;
             color: $gray-700;
-            line-height: $leading-relaxed;
-            margin-bottom: $space-2;
+            line-height: 1.6;
+            margin-bottom: 16rpx;
           }
           
           .timeline-tags {
             display: flex;
             flex-wrap: wrap;
-            gap: $space-2;
+            gap: 16rpx;
             
             .tag {
               background: $gray-100;
               color: $gray-600;
-              padding: $space-1 $space-2;
-              border-radius: $radius-sm;
-              font-size: $text-xs;
+              padding: 8rpx 16rpx;
+              border-radius: 8rpx;
+              font-size: 24rpx;
             }
           }
         }
@@ -741,18 +874,18 @@ export default {
       
       .timeline-empty {
         text-align: center;
-        padding: $space-8;
+        padding: 64rpx;
         
         .empty-text {
-          font-size: $text-base;
+          font-size: 32rpx;
           color: $gray-500;
           display: block;
-          margin-bottom: $space-2;
+          margin-bottom: 16rpx;
         }
         
         .empty-hint {
-          font-size: $text-sm;
-          color: $gray-400;
+          font-size: 28rpx;
+          color: $gray-300;
         }
       }
     }
@@ -761,61 +894,61 @@ export default {
 
 .checkin-modal {
   .modal-content {
-    padding: $space-6;
+    padding: 48rpx;
     
     .modal-title {
-      font-size: $text-2xl;
-      font-weight: $font-bold;
+      font-size: 48rpx;
+      font-weight: bold;
       color: $gray-800;
       text-align: center;
-      margin-bottom: $space-6;
+      margin-bottom: 48rpx;
     }
     
     .form-section {
-      margin-bottom: $space-6;
+      margin-bottom: 48rpx;
       
       .content-input {
-        margin-bottom: $space-4;
+        margin-bottom: 32rpx;
       }
       
       .mood-section {
-        margin-bottom: $space-4;
+        margin-bottom: 32rpx;
         
         .mood-label {
-          font-size: $text-base;
-          font-weight: $font-medium;
+          font-size: 32rpx;
+          font-weight: 500;
           color: $gray-700;
           display: block;
-          margin-bottom: $space-3;
+          margin-bottom: 24rpx;
         }
         
         .mood-options {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: $space-3;
+          gap: 24rpx;
           
           .mood-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: $space-3;
+            padding: 24rpx;
             border: 2rpx solid $gray-300;
-            border-radius: $radius-md;
-            transition: all $transition-normal;
+            border-radius: 12rpx;
+            transition: all 0.3s ease;
             cursor: pointer;
             
             &.active {
-              border-color: $primary-500;
-              background: $primary-50;
+              border-color: $primary-color;
+              background: rgba(102, 126, 234, 0.1);
             }
             
             .mood-emoji {
-              font-size: $text-2xl;
-              margin-bottom: $space-1;
+              font-size: 48rpx;
+              margin-bottom: 8rpx;
             }
             
             .mood-text {
-              font-size: $text-sm;
+              font-size: 28rpx;
               color: $gray-700;
             }
           }
@@ -824,30 +957,30 @@ export default {
       
       .tags-section {
         .tags-label {
-          font-size: $text-base;
-          font-weight: $font-medium;
+          font-size: 32rpx;
+          font-weight: 500;
           color: $gray-700;
           display: block;
-          margin-bottom: $space-3;
+          margin-bottom: 24rpx;
         }
         
         .tags-options {
           display: flex;
           flex-wrap: wrap;
-          gap: $space-2;
+          gap: 16rpx;
           
           .tag-item {
-            padding: $space-2 $space-3;
+            padding: 16rpx 24rpx;
             border: 2rpx solid $gray-300;
-            border-radius: $radius-md;
-            font-size: $text-sm;
+            border-radius: 12rpx;
+            font-size: 28rpx;
             color: $gray-700;
-            transition: all $transition-normal;
+            transition: all 0.3s ease;
             cursor: pointer;
             
             &.active {
-              border-color: $primary-500;
-              background: $primary-500;
+              border-color: $primary-color;
+              background: $primary-color;
               color: $white;
             }
           }
@@ -857,7 +990,7 @@ export default {
     
     .modal-actions {
       display: flex;
-      gap: $space-3;
+      gap: 24rpx;
       
       .cancel-btn {
         flex: 1;
@@ -871,31 +1004,31 @@ export default {
 }
 
 // 响应式设计
-@media (max-width: $breakpoint-sm) {
+@media (max-width: 750rpx) {
   .checkin-container {
-    padding: $space-3;
+    padding: 24rpx;
   }
   
   .checkin-header {
     .status-card {
-      padding: $space-4;
+      padding: 32rpx;
       flex-direction: column;
       text-align: center;
-      gap: $space-4;
+      gap: 32rpx;
       
       .status-content {
         .status-info {
           justify-content: center;
           
           .status-text {
-            font-size: $text-lg;
+            font-size: 36rpx;
           }
         }
       }
       
       .streak-info {
         .streak-number {
-          font-size: $text-2xl;
+          font-size: 48rpx;
         }
       }
     }
@@ -903,23 +1036,23 @@ export default {
   
   .checkin-modal {
     .modal-content {
-      padding: $space-4;
+      padding: 32rpx;
       
       .form-section {
         .mood-section {
           .mood-options {
             grid-template-columns: repeat(4, 1fr);
-            gap: $space-2;
+            gap: 16rpx;
             
             .mood-item {
-              padding: $space-2;
+              padding: 16rpx;
               
               .mood-emoji {
-                font-size: $text-xl;
+                font-size: 40rpx;
               }
               
               .mood-text {
-                font-size: $text-xs;
+                font-size: 24rpx;
               }
             }
           }
@@ -935,6 +1068,221 @@ export default {
         }
       }
     }
+  }
+}
+
+// 内联弹窗样式
+.inline-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+.inline-modal-content {
+  background: white;
+  width: 90%;
+  max-width: 600rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+}
+
+.inline-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.inline-modal-title {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.inline-modal-close {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.inline-form-section {
+  padding: 32rpx;
+}
+
+.inline-form-group {
+  margin-bottom: 32rpx;
+}
+
+.inline-form-label {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.inline-form-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 24rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+.inline-mood-section {
+  margin-bottom: 32rpx;
+}
+
+.inline-mood-label {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.inline-mood-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.inline-mood-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  background: #fafafa;
+  
+  &.active {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+  }
+}
+
+.inline-mood-emoji {
+  font-size: 40rpx;
+  margin-bottom: 8rpx;
+}
+
+.inline-mood-text {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.inline-tags-section {
+  margin-bottom: 32rpx;
+}
+
+.inline-tags-label {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.inline-tags-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.inline-tag-item {
+  padding: 16rpx 24rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #666;
+  background: #fafafa;
+  
+  &.active {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+  }
+}
+
+.inline-modal-actions {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 32rpx;
+  background: #f8f8f8;
+}
+
+.inline-cancel-btn,
+.inline-submit-btn {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: none;
+}
+
+.inline-cancel-btn {
+  background: #e5e5e5;
+  color: #666;
+}
+
+.inline-submit-btn {
+  background: #667eea;
+  color: white;
+  
+  &:disabled {
+    background: #ccc;
+    color: #999;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    transform: scale(0.9) translateY(-50rpx);
+    opacity: 0;
+  }
+  to { 
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+  }
+  70% { 
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10rpx rgba(255, 107, 107, 0);
+  }
+  100% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
   }
 }
 </style>

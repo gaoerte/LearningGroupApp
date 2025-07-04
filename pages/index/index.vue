@@ -79,6 +79,9 @@
         <button class="debug-btn secondary" @tap="goToSupabaseDemo">
           🔗 Supabase 完整演示
         </button>
+        <button class="debug-btn warning" @tap="goToCheckinSimple">
+          ✅ 打卡功能测试
+        </button>
         <button class="debug-btn secondary" @tap="goToTest">
           🧭 页面跳转测试
         </button>
@@ -400,6 +403,23 @@ export default {
       })
     },
     
+    goToCheckinSimple() {
+      console.log('[首页] 跳转到打卡功能测试页面')
+      uni.navigateTo({
+        url: '/pages/checkin/checkin-simple',
+        success: () => {
+          console.log('[首页] 成功跳转到打卡测试页面')
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转到打卡测试失败:', error)
+          uni.showToast({
+            title: '页面跳转失败',
+            icon: 'error'
+          })
+        }
+      })
+    },
+
     toggleToken() {
       try {
         if (this.hasToken) {

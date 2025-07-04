@@ -62,6 +62,14 @@
       }
     },
     {
+      "path": "pages/checkin/checkin-simple",
+      "style": {
+        "navigationBarTitleText": "打卡测试",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/aichat/aichat",
       "style": {
         "navigationBarTitleText": "AI学习助手",

@@ -1,85 +1,67 @@
 <template>
-  <view :class="cardClass" @tap="handleTap">
-    <view class="card-header" v-if="$slots.header || title || subtitle">
-      <slot name="header">
-        <text class="card-title" v-if="title">{{ title }}</text>
-        <text class="card-subtitle" v-if="subtitle">{{ subtitle }}</text>
-      </slot>
+  <view 
+    class="modern-card"
+    :class="[
+      variant,
+      shadow,
+      {
+        'has-title': !!title,
+        'clickable': clickable
+      }
+    ]"
+    @click="handleClick"
+  >
+    <!-- 卡片标题 -->
+    <view class="card-header" v-if="title">
+      <text class="card-title">{{ title }}</text>
+      <slot name="header-extra"></slot>
     </view>
     
-    <view class="card-body">
-      <slot />
+    <!-- 卡片内容 -->
+    <view class="card-body" :class="{ 'no-title': !title }">
+      <slot></slot>
     </view>
     
+    <!-- 卡片底部 -->
     <view class="card-footer" v-if="$slots.footer">
-      <slot name="footer" />
-    </view>
-    
-    <!-- 加载遮罩 -->
-    <view class="card-loading" v-if="loading">
-      <LoadingSpinner size="small" />
+      <slot name="footer"></slot>
     </view>
   </view>
 </template>
 
 <script>
-import LoadingSpinner from './LoadingSpinner.vue'
-
 export default {
   name: 'ModernCard',
-  components: {
-    LoadingSpinner
-  },
   props: {
     title: {
-      type: String,
-      default: ''
-    },
-    subtitle: {
       type: String,
       default: ''
     },
     variant: {
       type: String,
       default: 'default',
-      validator: value => ['default', 'primary', 'secondary', 'success', 'warning', 'error'].includes(value)
+      validator: (value) => ['default', 'primary', 'secondary', 'success', 'warning', 'danger'].includes(value)
     },
     shadow: {
       type: String,
       default: 'md',
-      validator: value => ['none', 'sm', 'md', 'lg', 'xl'].includes(value)
-    },
-    hoverable: {
-      type: Boolean,
-      default: true
+      validator: (value) => ['none', 'sm', 'md', 'lg', 'xl'].includes(value)
     },
     clickable: {
       type: Boolean,
       default: false
     },
-    loading: {
-      type: Boolean,
-      default: false
-    }
-  },
-  computed: {
-    cardClass() {
-      return [
-        'modern-card',
-        `card-${this.variant}`,
-        `shadow-${this.shadow}`,
-        {
-          'hoverable': this.hoverable && !this.loading,
-          'clickable': this.clickable && !this.loading,
-          'loading': this.loading
-        }
-      ]
+    padding: {
+      type: String,
+      default: 'normal',
+      validator: (value) => ['none', 'small', 'normal', 'large'].includes(value)
     }
   },
   methods: {
-    handleTap() {
-      if (!this.loading && this.clickable) {
-        this.$emit('tap')
+    handleClick(event) {
+      if (this.clickable) {
+        this.$emit('click', event);
+        this.$emit('tap', event); // 兼容uni-app
       }
     }
   }
@@ -87,121 +69,133 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-
 .modern-card {
-  position: relative;
-  background: $white;
-  border-radius: $radius-lg;
-  padding: $space-6;
-  margin-bottom: $space-4;
-  transition: all $transition-normal;
+  background: white;
+  border-radius: 16rpx;
   overflow: hidden;
+  transition: all 0.3s ease;
   
-  &.hoverable:active {
-    transform: translateY(-2rpx);
+  // 阴影变体
+  &.none {
+    box-shadow: none;
   }
   
+  &.sm {
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  }
+  
+  &.md {
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+  }
+  
+  &.lg {
+    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+  }
+  
+  &.xl {
+    box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.16);
+  }
+  
+  // 样式变体
+  &.default {
+    border: 1rpx solid #e5e7eb;
+  }
+  
+  &.primary {
+    border: 1rpx solid rgba(102, 126, 234, 0.2);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  }
+  
+  &.secondary {
+    border: 1rpx solid rgba(107, 114, 128, 0.2);
+    background: rgba(107, 114, 128, 0.02);
+  }
+  
+  &.success {
+    border: 1rpx solid rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.05);
+  }
+  
+  &.warning {
+    border: 1rpx solid rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.05);
+  }
+  
+  &.danger {
+    border: 1rpx solid rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.05);
+  }
+  
+  // 交互状态
   &.clickable {
+    cursor: pointer;
+    
     &:active {
-      transform: translateY(2rpx);
+      transform: translateY(-2rpx);
+      box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.15);
     }
   }
   
-  &.loading {
-    opacity: 0.7;
+  // 悬停效果（H5）
+  &:hover {
+    transform: translateY(-1rpx);
   }
-  
-  // 变体样式
-  &.card-primary {
-    background: $gradient-primary;
-    color: $white;
-    
-    .card-title { color: $white; }
-    .card-subtitle { color: rgba(255, 255, 255, 0.8); }
-  }
-  
-  &.card-secondary {
-    background: $gradient-secondary;
-    color: $white;
-    
-    .card-title { color: $white; }
-    .card-subtitle { color: rgba(255, 255, 255, 0.8); }
-  }
-  
-  &.card-success {
-    background: $success-light;
-    border-left: 8rpx solid $success;
-    
-    .card-title { color: $success; }
-  }
-  
-  &.card-warning {
-    background: $warning-light;
-    border-left: 8rpx solid $warning;
-    
-    .card-title { color: $warning; }
-  }
-  
-  &.card-error {
-    background: $error-light;
-    border-left: 8rpx solid $error;
-    
-    .card-title { color: $error; }
-  }
-  
-  // 阴影样式
-  &.shadow-none { box-shadow: none; }
-  &.shadow-sm { box-shadow: $shadow-sm; }
-  &.shadow-md { box-shadow: $shadow-md; }
-  &.shadow-lg { box-shadow: $shadow-lg; }
-  &.shadow-xl { box-shadow: $shadow-xl; }
 }
 
 .card-header {
-  margin-bottom: $space-4;
+  padding: 32rpx 32rpx 0 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   
   .card-title {
-    font-size: $text-xl;
-    font-weight: $font-semibold;
-    color: $gray-800;
-    margin-bottom: $space-1;
-    line-height: $leading-tight;
-  }
-  
-  .card-subtitle {
-    font-size: $text-sm;
-    color: $gray-500;
-    line-height: $leading-normal;
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #1f2937;
+    flex: 1;
   }
 }
 
 .card-body {
-  flex: 1;
-  line-height: $leading-relaxed;
+  padding: 32rpx;
+  
+  &.no-title {
+    padding-top: 32rpx;
+  }
+  
+  // 内边距变体
+  .modern-card.none & {
+    padding: 0;
+  }
+  
+  .modern-card.small & {
+    padding: 20rpx;
+  }
+  
+  .modern-card.large & {
+    padding: 48rpx;
+  }
 }
 
 .card-footer {
-  margin-top: $space-4;
-  padding-top: $space-4;
-  border-top: 1px solid $gray-200;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  padding: 0 32rpx 32rpx 32rpx;
+  border-top: 1rpx solid #f3f4f6;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
 }
 
-.card-loading {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
+// 特殊布局
+.has-title .card-body {
+  padding-top: 24rpx;
 }
 
-
+// 响应式
+@media (max-width: 750rpx) {
+  .card-header,
+  .card-body,
+  .card-footer {
+    padding-left: 24rpx;
+    padding-right: 24rpx;
+  }
+}
 </style>
