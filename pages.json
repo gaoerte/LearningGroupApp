@@ -117,6 +117,31 @@
         "navigationBarBackgroundColor": "#0ea5e9",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/test-guide/test-guide",
+      "style": {
+        "navigationBarTitleText": "打卡功能测试指南",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#f8fafc"
+      }
+    },
+    {
+      "path": "pages/chat/chat",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#f5f5f5"
+      }
+    },
+    {
+      "path": "pages/chat-test/chat-test",
+      "style": {
+        "navigationBarTitleText": "聊天功能测试",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#f8fafc"
+      }
     }
   ],
   "globalStyle": {

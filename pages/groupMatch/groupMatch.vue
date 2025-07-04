@@ -76,10 +76,21 @@
             <modern-button 
               type="primary" 
               size="small"
-              @click="joinGroup(group)"
+              @tap.stop="joinGroup(group)"
+              @click.stop="joinGroup(group)"
+              style="z-index: 999; position: relative;"
             >
               加入小组
             </modern-button>
+            
+            <!-- 备用原生按钮 -->
+            <button 
+              class="native-join-btn"
+              @tap.stop="joinGroup(group)"
+              @click.stop="joinGroup(group)"
+            >
+              备用按钮
+            </button>
           </view>
         </modern-card>
       </view>
@@ -90,6 +101,16 @@
       <view class="empty-icon">🔍</view>
       <text class="empty-title">暂无推荐小组</text>
       <text class="empty-desc">该兴趣领域暂时没有合适的学习小组，请尝试其他兴趣</text>
+      
+      <!-- 测试按钮 -->
+      <modern-button 
+        type="primary" 
+        @tap="testButtonClick"
+        @click="testButtonClick"
+        style="margin-top: 32rpx;"
+      >
+        测试按钮点击
+      </modern-button>
     </view>
 
     <!-- 功能提示 -->
@@ -162,6 +183,9 @@ export default {
         
         // 加载推荐群组
         await this.loadRecommendedGroups();
+        
+        // 添加一些测试数据
+        this.addTestGroups();
         
       } catch (error) {
         console.error('[群组匹配] 初始化失败:', error);
@@ -252,6 +276,131 @@ export default {
         });
       } finally {
         this.isLoading = false;
+      }
+    },
+    
+    testButtonClick() {
+      console.log('[群组匹配] 测试按钮被点击了！');
+      console.log('[群组匹配] 当前推荐群组数量:', this.recommendedGroups.length);
+      console.log('[群组匹配] 推荐群组数据:', this.recommendedGroups);
+      uni.showToast({
+        title: '测试按钮工作正常！',
+        icon: 'success'
+      });
+    },
+    
+    addTestGroups() {
+      console.log('[群组匹配] 添加测试群组数据');
+      this.recommendedGroups = [
+        {
+          id: 'test_group_1',
+          name: 'Vue.js学习交流',
+          description: 'Vue.js技术交流和项目分享',
+          interest: '编程技术',
+          level: '初级',
+          memberCount: 33,
+          createTime: '2天前创建',
+          activity: '活跃度高'
+        },
+        {
+          id: 'test_group_2',
+          name: '设计师交流群',
+          description: 'UI/UX设计师的学习和交流平台',
+          interest: '设计',
+          level: '初级',
+          memberCount: 28,
+          createTime: '2天前创建',
+          activity: '活跃度高'
+        }
+      ];
+      console.log('[群组匹配] 测试群组添加完成，数量:', this.recommendedGroups.length);
+    },
+    
+    async joinGroup(group) {
+      console.log('[群组匹配] 点击了加入群组按钮！', group);
+      
+      if (!this.currentUserId) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      try {
+        console.log('[群组匹配] 准备加入群组:', group.name);
+        
+        // 显示确认对话框
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '加入小组',
+            content: `确定要加入「${group.name}」吗？`,
+            success: (res) => {
+              resolve(res.confirm);
+            },
+            fail: () => {
+              resolve(false);
+            }
+          });
+        });
+        
+        if (!confirmResult) {
+          return;
+        }
+        
+        // 显示加载提示
+        uni.showLoading({
+          title: '正在加入...'
+        });
+        
+        // 调用加入群组API
+        const result = await GroupAPI.joinGroup(group.id, this.currentUserId);
+        
+        uni.hideLoading();
+        
+        if (result.success) {
+          console.log('[群组匹配] 加入群组成功:', result);
+          
+          // 显示成功提示
+          uni.showToast({
+            title: '加入成功！',
+            icon: 'success',
+            duration: 1500
+          });
+          
+          // 延迟跳转到群组聊天室
+          setTimeout(() => {
+            uni.navigateTo({
+              url: `/pages/groupChat/groupChat?groupId=${group.id}&groupName=${encodeURIComponent(group.name)}&justJoined=true`
+            });
+          }, 1500);
+          
+        } else {
+          throw new Error(result.error || '加入群组失败');
+        }
+        
+      } catch (error) {
+        console.error('[群组匹配] 加入群组失败:', error);
+        uni.hideLoading();
+        
+        let errorMessage = '加入失败';
+        if (error.message) {
+          if (error.message.includes('已经是群组成员')) {
+            errorMessage = '您已经是该群组成员了';
+          } else if (error.message.includes('群组人数已满')) {
+            errorMessage = '群组人数已满';
+          } else if (error.message.includes('群组不存在')) {
+            errorMessage = '群组不存在';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        uni.showToast({
+          title: errorMessage,
+          icon: 'none',
+          duration: 2000
+        });
       }
     }
   }
@@ -610,5 +759,17 @@ export default {
   50% {
     transform: translateY(-20rpx);
   }
+}
+
+.native-join-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8rpx;
+  padding: 16rpx 24rpx;
+  font-size: 24rpx;
+  margin-left: 16rpx;
+  z-index: 1000;
+  position: relative;
 }
 </style>

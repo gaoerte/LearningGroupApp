@@ -43,22 +43,6 @@
           >
             <text>{{ isSubmitting ? '提交中...' : '开始打卡' }}</text>
           </ModernButton>
-
-          <!-- 备用原生按钮 -->
-          <button 
-            class="native-checkin-button"
-            type="primary"
-            :disabled="isSubmitting"
-            @tap="openCheckinModal"
-            @click="openCheckinModal"
-          >
-            {{ isSubmitting ? '提交中...' : '备用按钮：开始打卡' }}
-          </button>
-
-          <!-- 调试信息 -->
-          <view class="debug-info" style="margin-top: 16rpx; font-size: 24rpx; color: #666;">
-            <text>调试：todayChecked={{ todayChecked }}, isSubmitting={{ isSubmitting }}, isModalVisible={{ isModalVisible }}</text>
-          </view>
         </view>
       </ModernCard>
     </view>
@@ -715,18 +699,6 @@ $white: #ffffff;
       .checkin-button {
         border-radius: 16rpx;
         width: 100%;
-        margin-bottom: 16rpx;
-      }
-
-      .native-checkin-button {
-        width: 100%;
-        height: 80rpx;
-        border-radius: 16rpx;
-        background: #f39c12;
-        color: white;
-        font-size: 32rpx;
-        border: none;
-        margin-bottom: 16rpx;
       }
     }
   }

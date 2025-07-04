@@ -82,6 +82,15 @@
         <button class="debug-btn warning" @tap="goToCheckinSimple">
           ✅ 打卡功能测试
         </button>
+        <button class="debug-btn info" @tap="goToTestGuide">
+          📋 完整测试指南
+        </button>
+        <button class="debug-btn success" @tap="goToChat">
+          💬 聊天功能测试
+        </button>
+        <button class="debug-btn primary" @tap="goToGroupMatch">
+          🎯 加入小组测试
+        </button>
         <button class="debug-btn secondary" @tap="goToTest">
           🧭 页面跳转测试
         </button>
@@ -453,7 +462,63 @@ export default {
       } catch (error) {
         console.error('[首页] Token操作失败:', error);
       }
-    }
+    },
+    
+    goToTestGuide() {
+      console.log('[首页] 跳转到测试指南')
+      uni.navigateTo({
+        url: '/pages/test-guide/test-guide',
+        success: () => {
+          console.log('[首页] 跳转测试指南成功')
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转测试指南失败:', error)
+          uni.showToast({
+            title: '跳转失败',
+            icon: 'none'
+          })
+        }
+      })
+    },
+    
+    goToChat() {
+      console.log('[首页] 跳转到聊天测试页面')
+      uni.navigateTo({
+        url: '/pages/chat-test/chat-test',
+        success: () => {
+          console.log('[首页] 跳转聊天测试页面成功')
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转聊天测试页面失败:', error)
+          uni.showToast({
+            title: '跳转失败',
+            icon: 'none'
+          })
+        }
+      })
+    },
+    
+    goToGroupMatch() {
+      console.log('[首页] 跳转到加入小组测试页面')
+      uni.navigateTo({
+        url: '/pages/groupMatch/groupMatch',
+        success: () => {
+          console.log('[首页] 跳转加入小组测试页面成功')
+          uni.showToast({
+            title: '💡 选择兴趣领域，然后点击"加入小组"测试功能',
+            icon: 'none',
+            duration: 3000
+          })
+        },
+        fail: (error) => {
+          console.error('[首页] 跳转加入小组测试页面失败:', error)
+          uni.showToast({
+            title: '跳转失败',
+            icon: 'none'
+          })
+        }
+      })
+    },
   }
 }
 </script>
@@ -698,6 +763,11 @@ export default {
     
     &.danger {
       background: #ef4444;
+      color: white;
+    }
+    
+    &.info {
+      background: #667eea;
       color: white;
     }
     

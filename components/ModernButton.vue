@@ -1,5 +1,5 @@
 <template>
-  <button :class="buttonClass" :disabled="disabled || loading" @tap="handleTap">
+  <button :class="buttonClass" :disabled="disabled || loading" @tap="handleTap" @click="handleClick">
     <LoadingSpinner v-if="loading" size="small" color="currentColor" />
     <view class="button-content" :class="{ 'with-loading': loading }">
       <slot />
@@ -62,6 +62,11 @@ export default {
     handleTap() {
       if (!this.disabled && !this.loading) {
         this.$emit('tap')
+      }
+    },
+    handleClick() {
+      if (!this.disabled && !this.loading) {
+        this.$emit('click')
       }
     }
   }

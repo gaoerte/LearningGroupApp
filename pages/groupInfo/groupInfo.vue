@@ -151,6 +151,8 @@
 import ModernCard from '../../components/ModernCard.vue'
 import ModernButton from '../../components/ModernButton.vue'
 import Modal from '../../components/Modal.vue'
+import { GroupAPI } from '../../api/groupAPI.js';
+import { StorageManager } from '../../utils/storage.js';
 
 export default {
   components: {
@@ -161,6 +163,7 @@ export default {
   data() {
     return {
       groupId: null,
+      currentUserId: null,
       isLoading: false,
       isJoined: false,
       showInviteModal: false,
@@ -197,6 +200,13 @@ export default {
   onLoad(options) {
     if (options.groupId) {
       this.groupId = options.groupId
+    }
+    
+    // 获取用户信息
+    const userInfo = StorageManager.getUserInfo();
+    this.currentUserId = userInfo ? userInfo.id : null;
+    
+    if (this.groupId) {
       this.loadGroupInfo()
     }
   },
@@ -225,41 +235,96 @@ export default {
     },
     
     async joinOrLeaveGroup() {
+      if (!this.currentUserId) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        });
+        return;
+      }
+      
       this.isLoading = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
         if (this.isJoined) {
           // 退出群组
           uni.showModal({
             title: '确认退出',
             content: '确定要退出这个群组吗？',
-            success: (res) => {
+            success: async (res) => {
               if (res.confirm) {
-                this.isJoined = false
-                this.groupInfo.memberCount--
-                uni.showToast({
-                  title: '已退出群组',
-                  icon: 'success'
-                })
+                try {
+                  const result = await GroupAPI.leaveGroup(this.groupId, this.currentUserId);
+                  if (result.success) {
+                    this.isJoined = false
+                    this.groupInfo.memberCount--
+                    uni.showToast({
+                      title: '已退出群组',
+                      icon: 'success'
+                    })
+                  } else {
+                    throw new Error(result.error || '退出失败');
+                  }
+                } catch (error) {
+                  console.error('退出群组失败:', error);
+                  uni.showToast({
+                    title: '退出失败',
+                    icon: 'error'
+                  });
+                }
               }
             }
           })
         } else {
           // 加入群组
-          this.isJoined = true
-          this.groupInfo.memberCount++
-          uni.showToast({
-            title: '加入成功',
-            icon: 'success'
-          })
+          uni.showLoading({
+            title: '正在加入...'
+          });
+          
+          const result = await GroupAPI.joinGroup(this.groupId, this.currentUserId);
+          
+          uni.hideLoading();
+          
+          if (result.success) {
+            this.isJoined = true
+            this.groupInfo.memberCount++
+            
+            uni.showToast({
+              title: '加入成功！',
+              icon: 'success',
+              duration: 1500
+            });
+            
+            // 延迟跳转到群组聊天室
+            setTimeout(() => {
+              uni.navigateTo({
+                url: `/pages/groupChat/groupChat?groupId=${this.groupId}&groupName=${encodeURIComponent(this.groupInfo.name)}&justJoined=true`
+              });
+            }, 1500);
+            
+          } else {
+            throw new Error(result.error || '加入群组失败');
+          }
         }
       } catch (error) {
         console.error('操作失败:', error)
+        uni.hideLoading();
+        
+        let errorMessage = '操作失败';
+        if (error.message) {
+          if (error.message.includes('已经是群组成员')) {
+            errorMessage = '您已经是该群组成员了';
+          } else if (error.message.includes('群组人数已满')) {
+            errorMessage = '群组人数已满';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
         uni.showToast({
-          title: '操作失败',
-          icon: 'error'
-        })
+          title: errorMessage,
+          icon: 'none',
+          duration: 2000
+        });
       } finally {
         this.isLoading = false
       }
