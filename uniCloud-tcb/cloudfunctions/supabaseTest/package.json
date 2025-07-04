@@ -1,0 +1,15 @@
+{
+  "name": "supabasetest",
+  "version": "1.0.0",
+  "description": "Supabase连接测试云函数",
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["supabase", "test", "unicloud"],
+  "author": "",
+  "license": "MIT"
+}

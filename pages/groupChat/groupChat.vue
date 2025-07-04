@@ -8,10 +8,16 @@
         </view>
         <view class="group-info">
           <text class="group-name">{{ groupName }}</text>
-          <text class="online-count">{{ onlineCount }}人在线</text>
+          <text class="online-count">{{ onlineCount }}人在线 | {{ messages.length }}条消息</text>
         </view>
       </view>
       <view class="header-actions">
+        <view class="action-btn" @click="testSupabaseConnection">
+          <text class="action-icon">🔗</text>
+        </view>
+        <view class="action-btn" @click="loadRealDataFromSupabase">
+          <text class="action-icon">📡</text>
+        </view>
         <view class="action-btn" @click="testChatAPI">
           <text class="action-icon">🔧</text>
         </view>
@@ -39,6 +45,11 @@
       <view class="load-more" v-if="hasMoreMessages">
         <loading-spinner size="small" v-if="loadingMore" />
         <text class="load-text" v-else @tap="loadMoreMessages">点击加载更多消息</text>
+      </view>
+
+      <!-- 调试信息 -->
+      <view class="debug-info" style="padding: 10px; background: #f0f0f0; margin: 5px; border-radius: 5px; font-size: 12px;">
+        <text>调试: 当前有 {{ messages.length }} 条消息</text>
       </view>
 
       <!-- 消息列表 -->
@@ -802,8 +813,58 @@ export default {
       this.scrollToBottom();
       
       try {
-        // 暂时跳过实际API调用，直接模拟成功
-        console.log('[GroupChat] 模拟发送消息成功');
+        // 尝试真正发送消息到数据库
+        console.log('[GroupChat] 调用云函数发送消息到数据库...');
+        
+        const result = await uniCloud.callFunction({
+          name: 'supabaseTest',
+          data: {
+            action: 'sendMessage',
+            messageData: {
+              content: content,
+              groupId: this.groupId,
+              senderId: this.currentUserId,
+              senderName: this.userInfo?.nickName || '我'
+            }
+          }
+        });
+        
+        console.log('[GroupChat] 云函数发送结果:', result);
+        
+        if (result.result?.success) {
+          console.log('[GroupChat] 消息发送到数据库成功');
+          
+          // 更新消息状态
+          const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id);
+          if (messageIndex !== -1) {
+            this.messages[messageIndex] = {
+              ...tempMessage,
+              id: result.result.data?.message?.id || 'msg_' + Date.now(),
+              status: 'sent'
+            };
+            
+            // 标记为已读
+            setTimeout(() => {
+              if (this.messages[messageIndex]) {
+                this.messages[messageIndex].status = 'read';
+              }
+            }, 2000);
+          }
+          
+          // 重新加载消息列表以显示最新数据
+          setTimeout(() => {
+            this.loadRealDataFromSupabase();
+          }, 1000);
+          
+        } else {
+          throw new Error(result.result?.error || '发送失败');
+        }
+
+      } catch (error) {
+        console.error('[GroupChat] 发送消息失败:', error);
+        
+        // 降级到模拟发送
+        console.log('[GroupChat] 降级到模拟发送...');
         
         // 更新消息状态
         const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id);
@@ -825,15 +886,6 @@ export default {
           setTimeout(() => {
             this.simulateReply(content);
           }, 3000 + Math.random() * 2000);
-        }
-        
-      } catch (error) {
-        console.error('[GroupChat] 发送消息失败:', error);
-        
-        // 更新消息状态为失败
-        const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id);
-        if (messageIndex !== -1) {
-          this.messages[messageIndex].status = 'failed';
         }
         
         uni.showToast({
@@ -1418,6 +1470,188 @@ export default {
             icon: 'error'
           });
         }
+      }
+    },
+
+    /**
+     * 测试Supabase连接 - 今晚连接用
+     */
+    async testSupabaseConnection() {
+      console.log('🔗 开始测试 Supabase 连接...');
+      
+      try {
+        uni.showLoading({
+          title: '连接测试中...'
+        });
+        
+        // 创建设置助手实例（直接内联避免导入问题）
+        const supabaseConfig = {
+          url: 'YOUR_SUPABASE_URL',
+          anonKey: 'YOUR_SUPABASE_ANON_KEY'
+        };
+        
+        // 简化的连接测试
+        const testConnection = async () => {
+          console.log('🔧 测试云函数连接...');
+          
+          try {
+            // 测试云函数连接
+            const cloudResult = await uniCloud.callFunction({
+              name: 'supabaseTest',
+              data: {
+                action: 'ping'
+              }
+            });
+            
+            console.log('☁️ 云函数测试结果:', cloudResult);
+            return cloudResult;
+          } catch (error) {
+            console.error('❌ 云函数调用失败:', error);
+            return {
+              success: false,
+              errMsg: error.message
+            };
+          }
+        };
+        
+        const testResults = await testConnection();
+        
+        
+        // 显示测试结果
+        console.log('📊 云函数测试结果:', testResults);
+        
+        uni.hideLoading();
+        
+        // 显示结果
+        if (testResults.result?.success) {
+          uni.showModal({
+            title: '🎉 连接成功！',
+            content: `云函数连接测试通过！\n响应时间: ${testResults.result.responseTime || 'N/A'}ms\n\n可以开始部署 Supabase 连接了！`,
+            showCancel: false,
+            confirmText: '太棒了！'
+          });
+          
+          // 如果连接成功，显示下一步操作提示
+          console.log('✨ 云函数连接正常，可以继续配置 Supabase！');
+          
+        } else {
+          uni.showModal({
+            title: '❌ 连接失败',
+            content: `云函数测试失败：\n${testResults.errMsg || '未知错误'}\n\n请检查云函数部署状态`,
+            showCancel: false,
+            confirmText: '我知道了'
+          });
+        }
+        
+      } catch (error) {
+        console.error('❌ 云函数连接测试异常:', error);
+        uni.hideLoading();
+        
+        uni.showModal({
+          title: '❌ 测试失败',
+          content: `连接测试出现异常：\n${error.message}\n\n请检查网络和云函数状态`,
+          showCancel: false,
+          confirmText: '知道了'
+        });
+      }
+    },
+
+    /**
+     * 从Supabase加载真实数据
+     */
+    async loadRealDataFromSupabase() {
+      try {
+        console.log('📡 开始加载 Supabase 真实数据...');
+        
+        uni.showLoading({
+          title: '加载真实数据...'
+        });
+        
+        // 1. 直接查询数据库中的测试消息
+        const messagesResult = await uniCloud.callFunction({
+          name: 'supabaseTest',
+          data: {
+            action: 'dbQuery',
+            query: `
+              SELECT 
+                cm.id,
+                cm.content,
+                cm.sender_name,
+                cm.group_id,
+                cm.sender_id,
+                sg.name as group_name,
+                u.nickname as user_nickname
+              FROM chat_messages cm
+              JOIN study_groups sg ON cm.group_id = sg.id
+              JOIN users u ON cm.sender_id = u.id
+              ORDER BY cm.id
+              LIMIT 10
+            `
+          }
+        });
+        
+        console.log('💬 消息查询结果:', messagesResult);
+        
+        if (messagesResult.result.success && messagesResult.result.data) {
+          const dbMessages = messagesResult.result.data || [];
+          console.log('📩 获取到的数据库消息:', dbMessages);
+          
+          if (dbMessages.length > 0) {
+            // 清空当前消息，显示真实数据
+            this.messages = [];
+            
+            // 转换数据库消息为界面格式
+            const realMessages = dbMessages.map((dbMsg, index) => ({
+              id: dbMsg.id || `real_${index}`,
+              groupId: dbMsg.group_id,
+              senderId: dbMsg.sender_id,
+              senderName: dbMsg.sender_name || dbMsg.user_nickname,
+              senderAvatar: '/static/default-avatar.png',
+              content: dbMsg.content,
+              type: 'text',
+              timestamp: Date.now() - (dbMessages.length - index) * 60000, // 模拟时间间隔
+              isOwn: Math.random() > 0.5, // 随机设置为自己或他人的消息
+              status: 'sent',
+              isRecalled: false
+            }));
+            
+            this.messages = realMessages;
+            console.log('📋 赋值后的 this.messages:', this.messages);
+            console.log('📋 this.messages 长度:', this.messages.length);
+            
+            // 强制触发视图更新
+            this.$forceUpdate();
+            
+            this.scrollToBottom();
+            
+            uni.hideLoading();
+            uni.showToast({
+              title: `🎉 加载了 ${realMessages.length} 条真实数据！`,
+              icon: 'success',
+              duration: 3000
+            });
+            
+            console.log('✅ 真实数据加载完成:', realMessages);
+          } else {
+            uni.hideLoading();
+            uni.showModal({
+              title: '📭 数据为空',
+              content: '数据库中暂无消息数据\n\n可能原因：\n1. 数据库刚创建，还没有数据\n2. 查询条件不匹配\n\n建议先执行一些数据库操作',
+              showCancel: false
+            });
+          }
+        } else {
+          throw new Error(messagesResult.result?.error || '查询失败');
+        }
+        
+      } catch (error) {
+        console.error('❌ 加载真实数据失败:', error);
+        uni.hideLoading();
+        uni.showModal({
+          title: '❌ 加载失败',
+          content: `无法加载真实数据：\n${error.message}\n\n请检查：\n1. 数据库连接\n2. 云函数状态\n3. 数据库中是否有数据`,
+          showCancel: false
+        });
       }
     },
 
