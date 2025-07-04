@@ -12,8 +12,14 @@
         </view>
       </view>
       <view class="header-actions">
+        <view class="action-btn" @click="testChatAPI">
+          <text class="action-icon">🔧</text>
+        </view>
         <view class="action-btn" @click="showGroupInfo">
           <text class="action-icon">ℹ️</text>
+        </view>
+        <view class="action-btn" @click="showMemberList">
+          <text class="action-icon">👥</text>
         </view>
         <view class="action-btn" @click="showMoreOptions">
           <text class="action-icon">⋯</text>
@@ -41,21 +47,30 @@
           v-for="message in messages" 
           :key="message.id"
           class="message-item"
-          :class="{ 'own-message': message.isOwn, 'system-message': message.type === 'system' }"
+          :class="{ 
+            'own-message': message.isOwn, 
+            'system-message': message.type === 'system',
+            'recalled-message': message.isRecalled
+          }"
         >
           <!-- 系统消息 -->
           <view v-if="message.type === 'system'" class="system-content">
             <text class="system-text">{{ message.content }}</text>
           </view>
           
+          <!-- 已撤回消息 -->
+          <view v-else-if="message.isRecalled" class="recalled-content">
+            <text class="recalled-text">{{ message.isOwn ? '您' : message.senderName }} 撤回了一条消息</text>
+          </view>
+          
           <!-- 普通消息 -->
           <view v-else class="normal-content">
             <!-- 对方消息 -->
             <view v-if="!message.isOwn" class="other-message">
-              <view class="message-avatar">
+              <view class="message-avatar" @click="showUserInfo(message.senderId)">
                 <image 
                   class="avatar-img" 
-                  :src="message.avatar || '/static/default-avatar.png'" 
+                  :src="message.senderAvatar || '/static/default-avatar.png'" 
                   mode="aspectFill" 
                 />
               </view>
@@ -64,7 +79,7 @@
                   <text class="sender-name">{{ message.senderName }}</text>
                   <text class="message-time">{{ formatTime(message.timestamp) }}</text>
                 </view>
-                <view class="message-bubble other-bubble">
+                <view class="message-bubble other-bubble" @longpress="showMessageOptions(message)">
                   <text class="message-text">{{ message.content }}</text>
                 </view>
               </view>
@@ -78,11 +93,11 @@
                   <view class="message-status">
                     <text class="status-icon" v-if="message.status === 'sending'">⏱️</text>
                     <text class="status-icon" v-else-if="message.status === 'sent'">✓</text>
-                    <text class="status-icon" v-else-if="message.status === 'read'">✓✓</text>
+                    <text class="status-icon read" v-else-if="message.status === 'read'">✓✓</text>
                     <text class="status-icon error" v-else-if="message.status === 'failed'">⚠️</text>
                   </view>
                 </view>
-                <view class="message-bubble own-bubble">
+                <view class="message-bubble own-bubble" @longpress="showMessageOptions(message)">
                   <text class="message-text">{{ message.content }}</text>
                 </view>
               </view>
@@ -123,7 +138,7 @@
             :disabled="isSending"
           />
           <view class="input-actions">
-            <view class="action-btn" @click="showEmojiPanel">
+            <view class="action-btn" @click="toggleEmojiPanel">
               <text class="action-icon">😊</text>
             </view>
             <view class="action-btn" @click="showMoreActions">
@@ -133,13 +148,33 @@
         </view>
         <modern-button 
           type="primary" 
-          size="medium"
+          size="md"
           :disabled="!inputText.trim() || isSending"
-          @click="sendMessage"
+          @tap="handleSendClick"
           class="send-button"
         >
           {{ isSending ? "发送中" : "发送" }}
         </modern-button>
+      </view>
+    </view>
+
+    <!-- 表情面板 -->
+    <view class="emoji-panel" v-if="showEmojiPanel" @tap="showEmojiPanel = false">
+      <view class="panel-content" @tap.stop>
+        <view class="panel-header">
+          <text class="panel-title">选择表情</text>
+          <text class="panel-close" @tap="showEmojiPanel = false">✕</text>
+        </view>
+        <view class="emoji-grid">
+          <view 
+            v-for="emoji in emojiList" 
+            :key="emoji"
+            class="emoji-item"
+            @tap="insertEmoji(emoji)"
+          >
+            <text class="emoji-text">{{ emoji }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -151,15 +186,15 @@
           <text class="panel-close" @tap="showMorePanel = false">✕</text>
         </view>
         <view class="panel-actions">
-          <view class="panel-action" @tap="sendImage">
+          <view class="panel-action" @tap="selectImage">
             <view class="action-icon">📷</view>
             <text class="action-text">图片</text>
           </view>
-          <view class="panel-action" @tap="sendFile">
+          <view class="panel-action" @tap="selectFile">
             <view class="action-icon">📁</view>
             <text class="action-text">文件</text>
           </view>
-          <view class="panel-action" @tap="sendLocation">
+          <view class="panel-action" @tap="shareLocation">
             <view class="action-icon">📍</view>
             <text class="action-text">位置</text>
           </view>
@@ -170,533 +205,1523 @@
         </view>
       </view>
     </view>
+
+    <!-- 消息操作面板 -->
+    <view class="message-action-panel" v-if="showMessageActions" @tap="showMessageActions = false">
+      <view class="panel-content" @tap.stop>
+        <view class="panel-header">
+          <text class="panel-title">消息操作</text>
+          <text class="panel-close" @tap="showMessageActions = false">✕</text>
+        </view>
+        <view class="panel-actions">
+          <view class="panel-action" @tap="copyMessage" v-if="selectedMessage">
+            <view class="action-icon">📋</view>
+            <text class="action-text">复制</text>
+          </view>
+          <view class="panel-action" @tap="replyMessage" v-if="selectedMessage">
+            <view class="action-icon">💬</view>
+            <text class="action-text">回复</text>
+          </view>
+          <view class="panel-action" @tap="forwardMessage" v-if="selectedMessage">
+            <view class="action-icon">📤</view>
+            <text class="action-text">转发</text>
+          </view>
+          <view 
+            class="panel-action danger" 
+            @tap="recallMessage" 
+            v-if="selectedMessage && selectedMessage.canRecall"
+          >
+            <view class="action-icon">🗑️</view>
+            <text class="action-text">撤回</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 成员列表面板 -->
+    <view class="member-panel" v-if="showMemberPanel" @tap="showMemberPanel = false">
+      <view class="panel-content" @tap.stop>
+        <view class="panel-header">
+          <text class="panel-title">群成员 ({{ onlineMembers.length }})</text>
+          <text class="panel-close" @tap="showMemberPanel = false">✕</text>
+        </view>
+        <scroll-view class="member-list" scroll-y>
+          <view 
+            v-for="member in onlineMembers" 
+            :key="member.userId"
+            class="member-item"
+          >
+            <image 
+              class="member-avatar" 
+              :src="member.avatar || '/static/default-avatar.png'" 
+              mode="aspectFill" 
+            />
+            <view class="member-info">
+              <text class="member-name">{{ member.userName }}</text>
+              <view class="member-status">
+                <view class="status-dot" :class="{ online: member.isOnline }"></view>
+                <text class="status-text">{{ member.isOnline ? '在线' : '离线' }}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import ModernButton from '../../components/ModernButton.vue'
 import LoadingSpinner from '../../components/LoadingSpinner.vue'
+import { ChatAPI } from '../../api/chatAPI.js'
+import { GroupAPI } from '../../api/groupAPI.js'
+import { StorageManager } from '../../utils/storage.js'
+import { createChatClient } from '../../utils/realtime-chat.js'
+import { getPlatformInfo } from '../../utils/env-adapter.js'
 
 export default {
+  name: 'GroupChat',
   components: {
     ModernButton,
     LoadingSpinner
   },
+  computed: {
+    // 使用自定义 Store 获取用户信息
+    userInfo() {
+      return StorageManager.getUserInfo() || null;
+    },
+    isLoggedIn() {
+      return StorageManager.isLoggedIn();
+    },
+    // 获取用户ID，兼容不同的字段名
+    currentUserId() {
+      const userInfo = this.userInfo;
+      return userInfo?.userId || userInfo?.id || null;
+    }
+  },
   data() {
     return {
-      groupId: null,
+      groupId: '',
       groupName: '学习小组',
-      onlineCount: 12,
+      groupInfo: null,
+      onlineCount: 0,
       inputText: '',
       isSending: false,
-      loadingMore: false,
-      hasMoreMessages: true,
       scrollTop: 0,
       showMorePanel: false,
+      showEmojiPanel: false,
+      showMessageActions: false,
+      showMemberPanel: false,
+      hasMoreMessages: true,
+      loadingMore: false,
+      loadingMessages: false,
+      typingUsers: [],
       showTyping: false,
-      typingUsers: ['小明'],
-      messages: [
-        {
-          id: 1,
-          type: 'system',
-          content: '欢迎加入学习小组！让我们一起努力学习吧！',
-          timestamp: Date.now() - 3600000
-        },
-        {
-          id: 2,
-          type: 'normal',
-          isOwn: false,
-          senderName: '张三',
-          avatar: '',
-          content: '大家好，我是新加入的成员，请多多指教！',
-          timestamp: Date.now() - 1800000,
-          status: 'read'
-        },
-        {
-          id: 3,
-          type: 'normal',
-          isOwn: true,
-          content: '欢迎新成员！有什么问题可以随时问我们',
-          timestamp: Date.now() - 1200000,
-          status: 'read'
-        },
-        {
-          id: 4,
-          type: 'normal',
-          isOwn: false,
-          senderName: '李四',
-          avatar: '',
-          content: '今天的数学作业有点难，有人可以帮忙解答一下吗？',
-          timestamp: Date.now() - 600000,
-          status: 'read'
-        },
-        {
-          id: 5,
-          type: 'normal',
-          isOwn: true,
-          content: '我可以帮你看看，把题目发出来吧',
-          timestamp: Date.now() - 300000,
-          status: 'read'
-        }
-      ]
+      typingTimer: null,
+      inputTimer: null,
+      currentPage: 1,
+      pageSize: 20,
+      messages: [],
+      onlineMembers: [],
+      selectedMessage: null,
+      // 表情面板数据
+      emojiList: [
+        '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+        '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+        '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
+        '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+        '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬'
+      ],
+      messagePollingTimer: null, // 消息轮询定时器
+      lastMessageTime: 0, // 最后消息时间戳
+      chatClient: null, // 聊天客户端
+      chatSubscription: null, // 聊天订阅ID
+      platformInfo: null, // 平台信息
     }
   },
   onLoad(options) {
+    console.log('[GroupChat] 页面加载，参数:', options);
+    
+    // 获取平台信息
+    this.platformInfo = getPlatformInfo();
+    console.log('[GroupChat] 平台信息:', this.platformInfo);
+    
     if (options.groupId) {
       this.groupId = options.groupId
     }
     if (options.groupName) {
       this.groupName = decodeURIComponent(options.groupName)
     }
+    
+    // 检查登录状态和用户信息
+    const userInfo = this.userInfo;
+    const isLoggedIn = this.isLoggedIn;
+    
+    console.log('[GroupChat] 登录状态检查:', { isLoggedIn, userInfo, currentUserId: this.currentUserId });
+    
+    if (!isLoggedIn || !this.currentUserId) {
+      console.log('[GroupChat] 用户未登录，跳转到登录页');
+      uni.showToast({
+        title: '请先登录',
+        icon: 'error'
+      });
+      setTimeout(() => {
+        uni.reLaunch({
+          url: '/pages/login/login'
+        });
+      }, 1500);
+      return;
+    }
+    
+    // 初始化聊天客户端
+    this.initializeChatClient();
+    
     this.loadInitialData()
   },
   onShow() {
     this.scrollToBottom()
-    this.startTypingTimer()
+    this.startHeartbeat()
+    this.loadOnlineMembers()
+    this.setupRealtimeSubscription() // 启动实时订阅
   },
   onHide() {
-    this.stopTypingTimer()
+    this.stopHeartbeat()
+    this.clearTypingStatus()
+    this.stopMessagePolling()
+  },
+  onUnload() {
+    this.stopHeartbeat()
+    this.clearTypingStatus()
+    this.stopMessagePolling()
+    this.cleanupChatClient() // 清理聊天客户端
+  },
+  mounted() {
+    // 不再需要消息轮询，使用 Realtime 代替
+    console.log('[GroupChat] 组件挂载，准备设置实时连接')
+  },
+  beforeDestroy() {
+    // 清理实时订阅
+    realtimeChat.unsubscribeAll()
   },
   methods: {
+    /**
+     * 初始化聊天客户端
+     */
+    initializeChatClient() {
+      try {
+        console.log('[GroupChat] 初始化聊天客户端');
+        
+        // 创建聊天客户端实例
+        this.chatClient = createChatClient({
+          supabaseUrl: 'your-supabase-url', // 从环境变量或配置中获取
+          supabaseKey: 'your-supabase-key', // 从环境变量或配置中获取
+          pollingInterval: this.platformInfo.needsPolling ? 5000 : 30000, // 小程序环境使用更频繁的轮询
+          maxRetries: 3
+        });
+        
+        console.log('[GroupChat] 聊天客户端初始化成功，平台:', this.platformInfo.type);
+      } catch (error) {
+        console.error('[GroupChat] 聊天客户端初始化失败:', error);
+        uni.showToast({
+          title: '聊天功能初始化失败',
+          icon: 'error'
+        });
+      }
+    },
+
+    /**
+     * 设置实时订阅
+     */
+    setupRealtimeSubscription() {
+      if (!this.chatClient || !this.groupId) {
+        console.warn('[GroupChat] 无法设置实时订阅：缺少客户端或群组ID');
+        return;
+      }
+
+      try {
+        console.log('[GroupChat] 设置实时订阅:', this.groupId);
+        
+        // 取消现有订阅
+        if (this.chatSubscription) {
+          this.chatClient.unsubscribe(this.chatSubscription);
+        }
+
+        // 创建新订阅
+        this.chatSubscription = this.chatClient.subscribeToMessages(
+          this.groupId,
+          (message) => {
+            console.log('[GroupChat] 收到新消息:', message);
+            this.handleNewMessage(message);
+          },
+          (error) => {
+            console.error('[GroupChat] 订阅错误:', error);
+            // 可以显示错误提示或降级处理
+          }
+        );
+
+        console.log('[GroupChat] 实时订阅设置成功:', this.chatSubscription);
+      } catch (error) {
+        console.error('[GroupChat] 设置实时订阅失败:', error);
+      }
+    },
+
+    /**
+     * 处理新消息
+     */
+    handleNewMessage(newMessage) {
+      try {
+        // 检查消息是否已存在（避免重复）
+        const existingMessage = this.messages.find(m => m.id === newMessage.id);
+        if (existingMessage) {
+          console.log('[GroupChat] 消息已存在，忽略:', newMessage.id);
+          return;
+        }
+
+        // 格式化消息
+        const formattedMessage = {
+          id: newMessage.id,
+          groupId: newMessage.group_id,
+          senderId: newMessage.sender_id,
+          senderName: newMessage.sender_name || '未知用户',
+          senderAvatar: newMessage.sender_avatar || '/static/default-avatar.png',
+          content: newMessage.content,
+          type: newMessage.type || 'text',
+          timestamp: new Date(newMessage.created_at).getTime(),
+          isOwn: newMessage.sender_id === this.currentUserId,
+          status: 'read',
+          isRecalled: newMessage.is_recalled || false
+        };
+
+        // 添加到消息列表
+        this.messages.push(formattedMessage);
+        
+        // 自动滚动到底部
+        this.$nextTick(() => {
+          this.scrollToBottom();
+        });
+
+        console.log('[GroupChat] 新消息已添加到列表');
+      } catch (error) {
+        console.error('[GroupChat] 处理新消息失败:', error);
+      }
+    },
+
+    /**
+     * 使用 Realtime 加载消息
+     */
+    async loadMessagesRealtime(page = 1) {
+      if (!this.chatClient) {
+        console.warn('[GroupChat] 聊天客户端未初始化');
+        return null;
+      }
+
+      try {
+        console.log('[GroupChat] 使用 Realtime 加载消息, page:', page);
+        
+        const messages = await this.chatClient.getMessages(this.groupId, this.pageSize);
+        
+        if (messages && messages.length > 0) {
+          // 格式化消息
+          const formattedMessages = messages.map(message => ({
+            id: message.id,
+            groupId: message.group_id,
+            senderId: message.sender_id,
+            senderName: message.sender_name || '未知用户',
+            senderAvatar: message.sender_avatar || '/static/default-avatar.png',
+            content: message.content,
+            type: message.type || 'text',
+            timestamp: new Date(message.created_at).getTime(),
+            isOwn: message.sender_id === this.currentUserId,
+            status: 'read',
+            isRecalled: message.is_recalled || false
+          }));
+
+          if (page === 1) {
+            this.messages = formattedMessages;
+          } else {
+            this.messages.unshift(...formattedMessages);
+          }
+
+          this.hasMoreMessages = messages.length >= this.pageSize;
+          this.currentPage = page;
+          
+          console.log('[GroupChat] Realtime 消息加载完成, 总数:', this.messages.length);
+          return { success: true, data: { messages: formattedMessages } };
+        } else {
+          console.log('[GroupChat] 没有更多消息');
+          this.hasMoreMessages = false;
+          return { success: true, data: { messages: [] } };
+        }
+      } catch (error) {
+        console.error('[GroupChat] Realtime 加载消息失败:', error);
+        return null;
+      }
+    },
+
+    /**
+     * 清理聊天客户端
+     */
+    cleanupChatClient() {
+      try {
+        console.log('[GroupChat] 清理聊天客户端');
+        
+        if (this.chatSubscription && this.chatClient) {
+          this.chatClient.unsubscribe(this.chatSubscription);
+          this.chatSubscription = null;
+        }
+
+        if (this.chatClient) {
+          this.chatClient.destroy();
+          this.chatClient = null;
+        }
+
+        console.log('[GroupChat] 聊天客户端清理完成');
+      } catch (error) {
+        console.error('[GroupChat] 清理聊天客户端失败:', error);
+      }
+    },
+
+    /**
+     * 加载初始数据
+     */
     async loadInitialData() {
       try {
-        // 模拟加载聊天记录
-        await new Promise(resolve => setTimeout(resolve, 500))
-        this.scrollToBottom()
+        console.log('[GroupChat] 开始加载初始数据, groupId:', this.groupId, 'userId:', this.userInfo?.userId);
+        this.loadingMessages = true;
+        
+        // 检查必要参数
+        if (!this.groupId) {
+          throw new Error('缺少群组ID');
+        }
+        if (!this.userInfo?.userId) {
+          throw new Error('用户未登录');
+        }
+        
+        // 同时加载群组信息和聊天记录
+        const [groupResult, messageResult] = await Promise.all([
+          this.loadGroupInfo(),
+          this.loadMessagesRealtime(1) // 使用 Realtime 加载
+        ]);
+        
+        console.log('[GroupChat] 数据加载完成:', { groupResult, messageResult });
+        
+        if (messageResult) {
+          this.scrollToBottom();
+        }
+        
       } catch (error) {
-        console.error('加载聊天记录失败:', error)
-      }
-    },
-    
-    async loadMoreMessages() {
-      if (this.loadingMore || !this.hasMoreMessages) return
-      
-      this.loadingMore = true
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        // 模拟加载更多消息
-        const moreMessages = [
-          {
-            id: Date.now(),
-            type: 'normal',
-            isOwn: false,
-            senderName: '王五',
-            content: '早上好大家！',
-            timestamp: Date.now() - 7200000,
-            status: 'read'
-          }
-        ]
-        this.messages.unshift(...moreMessages)
-        this.hasMoreMessages = Math.random() > 0.7 // 模拟是否还有更多消息
-      } catch (error) {
-        console.error('加载更多消息失败:', error)
+        console.error('[GroupChat] 加载初始数据失败:', error);
+        uni.showToast({
+          title: error.message || '加载失败',
+          icon: 'error'
+        });
       } finally {
-        this.loadingMore = false
+        this.loadingMessages = false;
       }
     },
-    
-    async sendMessage() {
-      if (!this.inputText.trim() || this.isSending) return
-      
-      const messageContent = this.inputText.trim()
-      this.inputText = ''
-      this.isSending = true
-      
-      // 添加发送中的消息
-      const tempMessage = {
-        id: Date.now(),
-        type: 'normal',
-        isOwn: true,
-        content: messageContent,
-        timestamp: Date.now(),
-        status: 'sending'
+
+    /**
+     * 加载群组信息
+     */
+    async loadGroupInfo() {
+      try {
+        const result = await GroupAPI.getGroupDetail(this.groupId, this.currentUserId);
+        if (result.success) {
+          this.groupInfo = result.data;
+          this.groupName = result.data.name;
+        }
+        return result;
+      } catch (error) {
+        console.error('[GroupChat] 加载群组信息失败:', error);
+        return null;
       }
+    },
+
+    /**
+     * 加载聊天消息
+     */
+    async loadMessages(page = 1) {
+      try {
+        console.log('[GroupChat] 开始加载消息, page:', page, 'groupId:', this.groupId, 'userId:', this.userInfo?.userId);
+        
+        const result = await ChatAPI.getGroupMessages(
+          this.groupId, 
+          this.currentUserId, 
+          page, 
+          this.pageSize
+        );
+        
+        console.log('[GroupChat] 消息API返回结果:', result);
+        
+        if (result && result.success) {
+          const messages = result.data?.messages || [];
+          console.log('[GroupChat] 收到消息数量:', messages.length);
+          
+          if (page === 1) {
+            this.messages = messages;
+          } else {
+            this.messages.unshift(...messages);
+          }
+          
+          this.hasMoreMessages = result.data?.hasMore || false;
+          this.currentPage = page;
+          
+          console.log('[GroupChat] 消息加载完成, 总数:', this.messages.length);
+          return result;
+        } else {
+          console.warn('[GroupChat] 消息加载失败:', result?.error || '未知错误');
+          return null;
+        }
+      } catch (error) {
+        console.error('[GroupChat] 加载消息失败:', error);
+        return null;
+      }
+    },
+
+    /**
+     * 加载更多消息
+     */
+    async loadMoreMessages() {
+      if (this.loadingMore || !this.hasMoreMessages) return;
       
-      this.messages.push(tempMessage)
-      this.scrollToBottom()
+      this.loadingMore = true;
+      try {
+        await this.loadMessages(this.currentPage + 1);
+      } catch (error) {
+        console.error('[GroupChat] 加载更多消息失败:', error);
+      } finally {
+        this.loadingMore = false;
+      }
+    },
+
+    /**
+     * 发送消息 - 使用 Realtime 客户端
+     */
+    async sendMessage() {
+      const content = this.inputText.trim();
+      if (!content || this.isSending) return;
+      
+      this.inputText = '';
+      this.isSending = true;
+      this.clearTypingStatus();
+      
+      // 添加临时消息到列表
+      const tempMessage = {
+        id: 'temp_' + Date.now(),
+        groupId: this.groupId,
+        senderId: this.currentUserId,
+        senderName: this.userInfo.nickName || '我',
+        senderAvatar: this.userInfo.avatarUrl,
+        content: content,
+        type: 'text',
+        timestamp: Date.now(),
+        isOwn: true,
+        status: 'sending',
+        isRecalled: false
+      };
+      
+      this.messages.push(tempMessage);
+      this.scrollToBottom();
       
       try {
-        // 模拟发送消息
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        let result;
         
-        // 更新消息状态
-        const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id)
-        if (messageIndex !== -1) {
-          this.messages[messageIndex].status = 'sent'
-          
-          // 模拟一段时间后标记为已读
-          setTimeout(() => {
-            if (this.messages[messageIndex]) {
-              this.messages[messageIndex].status = 'read'
+        // 优先使用 Realtime 客户端
+        if (this.chatClient) {
+          console.log('[GroupChat] 使用 Realtime 客户端发送消息');
+          result = await this.chatClient.sendMessage(
+            this.groupId,
+            content,
+            this.currentUserId,
+            this.userInfo.nickName || '我'
+          );
+        } else {
+          console.log('[GroupChat] 降级使用 ChatAPI 发送消息');
+          result = await ChatAPI.sendGroupMessage(
+            this.groupId,
+            this.currentUserId,
+            {
+              content: content,
+              type: 'text'
             }
-          }, 2000)
+          );
         }
         
-        // 模拟其他人的回复
-        setTimeout(() => {
-          this.simulateReply(messageContent)
-        }, 3000)
+        if (result.success) {
+          console.log('[GroupChat] 消息发送成功');
+          
+          // 更新消息状态
+          const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id);
+          if (messageIndex !== -1) {
+            this.messages[messageIndex] = {
+              ...tempMessage,
+              id: result.data?.id || Date.now(),
+              status: 'sent'
+            };
+            
+            // 模拟一段时间后标记为已读
+            setTimeout(() => {
+              if (this.messages[messageIndex]) {
+                this.messages[messageIndex].status = 'read';
+              }
+            }, 2000);
+          }
+          
+        } else {
+          throw new Error(result.error || '发送失败');
+        }
         
       } catch (error) {
-        console.error('发送消息失败:', error)
-        const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id)
+        console.error('[GroupChat] 发送消息失败:', error);
+        
+        // 更新消息状态为失败
+        const messageIndex = this.messages.findIndex(m => m.id === tempMessage.id);
         if (messageIndex !== -1) {
-          this.messages[messageIndex].status = 'failed'
+          this.messages[messageIndex].status = 'failed';
         }
+        
         uni.showToast({
           title: '发送失败',
           icon: 'error'
-        })
+        });
+      } finally {
+        this.isSending = false;
+      }
+    },
+
+    /**
+     * 撤回消息
+     */
+    async recallMessage() {
+      if (!this.selectedMessage) return;
+      
+      try {
+        const result = await ChatAPI.recallMessage(
+          this.selectedMessage.id,
+          this.currentUserId
+        );
+        
+        if (result.success) {
+          // 更新消息状态
+          const messageIndex = this.messages.findIndex(m => m.id === this.selectedMessage.id);
+          if (messageIndex !== -1) {
+            this.messages[messageIndex].isRecalled = true;
+          }
+          
+          uni.showToast({
+            title: '撤回成功',
+            icon: 'success'
+          });
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('[GroupChat] 撤回消息失败:', error);
+        uni.showToast({
+          title: '撤回失败',
+          icon: 'error'
+        });
+      } finally {
+        this.showMessageActions = false;
+        this.selectedMessage = null;
+      }
+    },
+
+    /**
+     * 模拟其他人回复
+     */
+    simulateReply(originalContent) {
+      const replies = [
+        '赞同你的观点！',
+        '说得很有道理',
+        '我也是这么想的',
+        '学到了，谢谢分享',
+        '确实如此',
+        '还有其他想法吗？'
+      ];
+      
+      const replyContent = replies[Math.floor(Math.random() * replies.length)];
+      
+      const replyMessage = {
+        id: Date.now().toString(),
+        groupId: this.groupId,
+        senderId: 'user' + Math.floor(Math.random() * 100),
+        senderName: ['小明', '小红', '小华', '小李'][Math.floor(Math.random() * 4)],
+        senderAvatar: 'https://via.placeholder.com/40',
+        content: replyContent,
+        type: 'text',
+        timestamp: Date.now(),
+        isOwn: false,
+        status: 'read',
+        isRecalled: false
+      };
+      
+      this.messages.push(replyMessage);
+      this.scrollToBottom();
+    },
+
+    /**
+     * 加载在线成员
+     */
+    async loadOnlineMembers() {
+      try {
+        const result = await ChatAPI.getOnlineMembers(this.groupId);
+        if (result.success) {
+          this.onlineMembers = result.data.allMembers || [];
+          this.onlineCount = result.data.totalOnline || 0;
+        }
+      } catch (error) {
+        console.error('[GroupChat] 加载在线成员失败:', error);
+      }
+    },
+
+    /**
+     * 输入变化处理
+     */
+    onInputChange() {
+      this.sendTypingStatus(true);
+      
+      // 清除之前的定时器
+      if (this.inputTimer) {
+        clearTimeout(this.inputTimer);
+      }
+      
+      // 3秒后清除输入状态
+      this.inputTimer = setTimeout(() => {
+        this.sendTypingStatus(false);
+      }, 3000);
+    },
+
+    /**
+     * 输入框获得焦点
+     */
+    onInputFocus() {
+      // 可以在这里处理键盘弹起等逻辑
+    },
+
+    /**
+     * 输入框失去焦点
+     */
+    onInputBlur() {
+      this.sendTypingStatus(false);
+    },
+
+    /**
+     * 发送输入状态
+     */
+    async sendTypingStatus(isTyping) {
+      try {
+        await ChatAPI.sendTypingStatus(
+          this.groupId,
+          this.currentUserId,
+          isTyping
+        );
+      } catch (error) {
+        // 输入状态发送失败不影响正常使用
+      }
+    },
+
+    /**
+     * 清除输入状态
+     */
+    clearTypingStatus() {
+      if (this.inputTimer) {
+        clearTimeout(this.inputTimer);
+        this.inputTimer = null;
+      }
+      this.sendTypingStatus(false);
+    },
+
+    /**
+     * 开始心跳检测
+     */
+    startHeartbeat() {
+      this.loadOnlineMembers();
+      
+      this.typingTimer = setInterval(() => {
+        this.loadOnlineMembers();
+        
+        // 模拟显示输入状态
+        if (Math.random() > 0.8) {
+          this.showTyping = true;
+          this.typingUsers = ['小明'];
+          setTimeout(() => {
+            this.showTyping = false;
+            this.typingUsers = [];
+          }, 3000);
+        }
+      }, 10000);
+    },
+
+    /**
+     * 停止心跳检测
+     */
+    stopHeartbeat() {
+      if (this.typingTimer) {
+        clearInterval(this.typingTimer);
+        this.typingTimer = null;
+      }
+    },
+
+    /**
+     * 启动消息轮询
+     */
+    startMessagePolling() {
+      // 清除现有定时器
+      this.stopMessagePolling();
+      
+      // 设置轮询定时器，延长间隔到30秒减少超时风险
+      this.messagePollingTimer = setInterval(() => {
+        if (this.groupId && this.currentUserId && !this.loadingMessages) {
+          this.loadNewMessages();
+        }
+      }, 30000); // 改为30秒
+      
+      console.log('[GroupChat] 消息轮询已启动 (30秒间隔)');
+    },
+    
+    /**
+     * 停止消息轮询
+     */
+    stopMessagePolling() {
+      if (this.messagePollingTimer) {
+        clearInterval(this.messagePollingTimer);
+        this.messagePollingTimer = null;
+        console.log('[GroupChat] 消息轮询已停止');
+      }
+    },
+    
+    /**
+     * 加载新消息（轮询用）- 简化版本
+     */
+    async loadNewMessages() {
+      try {
+        console.log('[GroupChat] 检查新消息...');
+        
+        // 简化逻辑：直接模拟有新消息
+        if (Math.random() > 0.7) { // 30% 概率有新消息
+          const newMessage = {
+            id: 'auto_' + Date.now(),
+            groupId: this.groupId,
+            senderId: 'user_' + Math.floor(Math.random() * 100),
+            senderName: ['小明', '小红', '小华', '小张'][Math.floor(Math.random() * 4)],
+            senderAvatar: '👤',
+            content: [
+              '大家好！',
+              '最近学习进度如何？',
+              '分享一个学习技巧...',
+              '今天学到了新知识！',
+              '有问题想请教大家'
+            ][Math.floor(Math.random() * 5)],
+            timestamp: Date.now(),
+            type: 'text',
+            status: 'sent',
+            isOwn: false,
+            isRecalled: false
+          };
+          
+          this.messages.push(newMessage);
+          this.scrollToBottom();
+          console.log('[GroupChat] 收到新消息:', newMessage.content);
+        }
+      } catch (error) {
+        console.error('[GroupChat] 加载新消息失败:', error);
+        // 静默处理错误，不影响用户体验
+      }
+    },
+    
+    /**
+     * 滚动到底部
+     */
+    scrollToBottom() {
+      this.$nextTick(() => {
+        this.scrollTop = 999999;
+      });
+    },
+
+    /**
+     * 格式化时间
+     */
+    formatTime(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) { // 1分钟内
+        return '刚刚';
+      } else if (diff < 3600000) { // 1小时内
+        return Math.floor(diff / 60000) + '分钟前';
+      } else if (diff < 86400000) { // 24小时内
+        return Math.floor(diff / 3600000) + '小时前';
+      } else {
+        return date.toLocaleDateString();
+      }
+    },
+
+    /**
+     * 显示消息操作选项
+     */
+    showMessageOptions(message) {
+      this.selectedMessage = message;
+      this.showMessageActions = true;
+    },
+
+    /**
+     * 显示群组信息
+     */
+    showGroupInfo() {
+      uni.navigateTo({
+        url: `/pages/groupInfo/groupInfo?groupId=${this.groupId}`
+      });
+    },
+
+    /**
+     * 显示成员列表
+     */
+    showMemberList() {
+      this.showMemberPanel = true;
+    },
+
+    /**
+     * 显示更多选项
+     */
+    showMoreOptions() {
+      // 可以添加更多群组操作选项
+    },
+
+    /**
+     * 显示更多操作
+     */
+    showMoreActions() {
+      this.showMorePanel = true;
+    },
+
+    /**
+     * 切换表情面板
+     */
+    toggleEmojiPanel() {
+      this.showEmojiPanel = !this.showEmojiPanel;
+    },
+
+    /**
+     * 插入表情
+     */
+    insertEmoji(emoji) {
+      this.inputText += emoji;
+      this.showEmojiPanel = false;
+    },
+
+    /**
+     * 复制消息
+     */
+    copyMessage() {
+      if (!this.selectedMessage) return;
+      
+      uni.setClipboardData({
+        data: this.selectedMessage.content,
+        success: () => {
+          uni.showToast({
+            title: '复制成功',
+            icon: 'success'
+          });
+        }
+      });
+      
+      this.showMessageActions = false;
+      this.selectedMessage = null;
+    },
+
+    /**
+     * 回复消息
+     */
+    replyMessage() {
+      if (!this.selectedMessage) return;
+      
+      this.inputText = `@${this.selectedMessage.senderName} `;
+      this.showMessageActions = false;
+      this.selectedMessage = null;
+    },
+
+    /**
+     * 转发消息
+     */
+    forwardMessage() {
+      if (!this.selectedMessage) return;
+      
+      // 这里可以实现转发功能
+      uni.showToast({
+        title: '转发功能开发中',
+        icon: 'none'
+      });
+      
+      this.showMessageActions = false;
+      this.selectedMessage = null;
+    },
+
+    /**
+     * 选择图片
+     */
+    selectImage() {
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          this.uploadAndSendFile(res.tempFilePaths[0], 'image');
+        }
+      });
+      this.showMorePanel = false;
+    },
+
+    /**
+     * 选择文件
+     */
+    selectFile() {
+      // 小程序暂不支持选择任意文件，可以选择图片或视频
+      uni.showToast({
+        title: '文件功能开发中',
+        icon: 'none'
+      });
+      this.showMorePanel = false;
+    },
+
+    /**
+     * 分享位置
+     */
+    shareLocation() {
+      uni.chooseLocation({
+        success: (res) => {
+          const locationMessage = `📍 ${res.name}\n${res.address}`;
+          this.sendTextMessage(locationMessage);
+        }
+      });
+      this.showMorePanel = false;
+    },
+
+    /**
+     * 调用AI助手
+     */
+    callAI() {
+      uni.navigateTo({
+        url: '/pages/aichat/aichat'
+      });
+      this.showMorePanel = false;
+    },
+
+    /**
+     * 上传并发送文件
+     */
+    async uploadAndSendFile(filePath, fileType) {
+      try {
+        uni.showLoading({
+          title: '上传中...'
+        });
+        
+        const result = await ChatAPI.uploadChatFile(filePath, fileType);
+        
+        if (result.success) {
+          // 发送文件消息
+          await ChatAPI.sendGroupMessage(
+            this.groupId,
+            this.currentUserId,
+            {
+              content: result.data.fileUrl,
+              type: fileType,
+              fileName: result.data.fileName,
+              fileSize: result.data.fileSize
+            }
+          );
+          
+          // 刷新消息列表
+          await this.loadMessages(1);
+          this.scrollToBottom();
+        }
+        
+      } catch (error) {
+        console.error('[GroupChat] 上传文件失败:', error);
+        uni.showToast({
+          title: '上传失败',
+          icon: 'error'
+        });
+      } finally {
+        uni.hideLoading();
+      }
+    },
+
+    /**
+     * 发送文本消息（用于位置等特殊消息）
+     */
+    async sendTextMessage(content) {
+      this.inputText = content;
+      await this.sendMessage();
+    },
+
+    /**
+     * 显示用户信息
+     */
+    showUserInfo(userId) {
+      // 可以跳转到用户详情页
+      console.log('[GroupChat] 查看用户信息:', userId);
+    },
+
+    /**
+     * 测试聊天API - 临时调试方法
+     */
+    async testChatAPI() {
+      console.log('[GroupChat] 开始测试聊天API...');
+      
+      // 动态导入测试模块
+      try {
+        const { GroupFunctionalityTest } = await import('../../test/group-functionality-test.js');
+        
+        // 运行完整的功能测试
+        const results = await GroupFunctionalityTest.runAllTests();
+        
+        if (results.groupChat) {
+          uni.showToast({
+            title: '所有功能测试通过',
+            icon: 'success'
+          });
+          
+          // 如果有消息数据，直接显示
+          if (results.getUserGroups && results.getUserGroups.groups) {
+            this.messages = [
+              {
+                id: 'test_msg_' + Date.now(),
+                groupId: this.groupId,
+                senderId: 'test_user',
+                senderName: '系统',
+                content: `测试完成！发现 ${results.getUserGroups.groups.length} 个群组`,
+                timestamp: new Date().toISOString(),
+                type: 'text',
+                isOwn: false,
+                status: 'sent'
+              }
+            ];
+          }
+        } else {
+          uni.showToast({
+            title: '部分功能测试失败',
+            icon: 'error'
+          });
+        }
+      } catch (error) {
+        console.error('[GroupChat] 功能测试异常:', error);
+        
+        // 如果测试模块加载失败，进行简单的API测试
+        try {
+          const result = await ChatAPI.getGroupMessages(
+            this.groupId || 'test-group',
+            this.userInfo?.userId || 'test-user',
+            1,
+            10
+          );
+          
+          console.log('[GroupChat] API测试结果:', result);
+          
+          if (result && result.success) {
+            uni.showToast({
+              title: `加载到${result.data.messages?.length || 0}条消息`,
+              icon: 'success'
+            });
+            
+            // 直接设置消息到界面
+            this.messages = result.data.messages || [];
+            this.scrollToBottom();
+          } else {
+            uni.showToast({
+              title: '测试失败: ' + (result?.error || '未知错误'),
+              icon: 'error'
+            });
+          }
+        } catch (apiError) {
+          console.error('[GroupChat] API测试异常:', apiError);
+          uni.showToast({
+            title: '测试异常: ' + apiError.message,
+            icon: 'error'
+          });
+        }
+      }
+    },
+
+    /**
+     * 设置 Realtime 订阅
+     */
+    setupRealtimeSubscription() {
+      if (!this.groupId) return
+      
+      console.log('[GroupChat] 设置实时订阅:', this.groupId)
+      
+      // 订阅群组消息更新
+      realtimeChat.subscribeToGroup(this.groupId, {
+        onMessage: (message) => {
+          console.log('[GroupChat] 收到实时消息:', message)
+          
+          // 检查是否是重复消息
+          const existingMessage = this.messages.find(m => m.id === message.id)
+          if (!existingMessage) {
+            // 设置是否为自己的消息
+            message.isOwn = message.senderId === this.currentUserId
+            
+            // 添加到消息列表
+            this.messages.push(message)
+            
+            // 滚动到底部
+            this.scrollToBottom()
+            
+            // 如果不是自己的消息，显示提示
+            if (!message.isOwn) {
+              uni.showToast({
+                title: `${message.senderName}: ${message.content.substring(0, 10)}...`,
+                icon: 'none',
+                duration: 2000
+              })
+            }
+          }
+        },
+        
+        onUpdate: (message, oldMessage) => {
+          console.log('[GroupChat] 消息更新:', message)
+          
+          // 找到并更新消息
+          const index = this.messages.findIndex(m => m.id === message.id)
+          if (index !== -1) {
+            message.isOwn = message.senderId === this.currentUserId
+            this.messages.splice(index, 1, message)
+          }
+        },
+        
+        onDelete: (messageId) => {
+          console.log('[GroupChat] 消息删除:', messageId)
+          
+          // 从列表中移除消息
+          const index = this.messages.findIndex(m => m.id === messageId)
+          if (index !== -1) {
+            this.messages.splice(index, 1)
+          }
+        }
+      })
+    },
+
+    /**
+     * 使用 Realtime 发送消息
+     */
+    async sendMessageRealtime() {
+      const content = this.inputText.trim()
+      if (!content || this.isSending) return
+      
+      this.inputText = ''
+      this.isSending = true
+      this.clearTypingStatus()
+      
+      try {
+        console.log('[GroupChat] 使用 Realtime 发送消息:', content)
+        
+        // 直接通过 Realtime 发送到数据库
+        const result = await realtimeChat.sendMessage(
+          this.groupId,
+          this.currentUserId,
+          content,
+          'text'
+        )
+        
+        if (result.success) {
+          console.log('[GroupChat] Realtime 消息发送成功')
+          // 不需要手动添加消息，Realtime 会自动推送
+        } else {
+          throw new Error(result.error)
+        }
+        
+      } catch (error) {
+        console.error('[GroupChat] Realtime 发送消息失败:', error)
+        
+        // 降级到云函数发送
+        console.log('[GroupChat] 降级使用云函数发送')
+        await this.sendMessageFallback(content)
+        
       } finally {
         this.isSending = false
       }
     },
-    
-    simulateReply(originalMessage) {
-      const replies = [
-        '好的，我明白了',
-        '谢谢分享！',
-        '这个问题很有意思',
-        '我也有同样的想法',
-        '可以详细说说吗？'
-      ]
-      
-      const reply = replies[Math.floor(Math.random() * replies.length)]
-      const replyMessage = {
-        id: Date.now(),
-        type: 'normal',
-        isOwn: false,
-        senderName: '系统回复',
-        content: reply,
-        timestamp: Date.now(),
-        status: 'read'
-      }
-      
-      this.messages.push(replyMessage)
-      this.scrollToBottom()
-    },
-    
-    onInputChange(e) {
-      this.inputText = e.detail.value
-      // 模拟输入状态
-      this.showTyping = this.inputText.length > 0
-    },
-    
-    onInputFocus() {
-      this.scrollToBottom()
-    },
-    
-    onInputBlur() {
-      this.showTyping = false
-    },
-    
-    startTypingTimer() {
-      this.typingTimer = setInterval(() => {
-        this.showTyping = Math.random() > 0.8
-        if (this.showTyping) {
-          setTimeout(() => {
-            this.showTyping = false
-          }, 3000)
-        }
-      }, 10000)
-    },
-    
-    stopTypingTimer() {
-      if (this.typingTimer) {
-        clearInterval(this.typingTimer)
-      }
-    },
-    
-    showGroupInfo() {
-      uni.navigateTo({
-        url: `/pages/groupInfo/groupInfo?groupId=${this.groupId}`
-      })
-    },
-    
-    showMoreOptions() {
-      uni.showActionSheet({
-        itemList: ['群组信息', 'AI助手', '聊天记录', '群组设置'],
-        success: (res) => {
-          switch (res.tapIndex) {
-            case 0:
-              this.showGroupInfo()
-              break
-            case 1:
-              this.callAI()
-              break
-            case 2:
-              uni.showToast({ title: '功能开发中', icon: 'none' })
-              break
-            case 3:
-              uni.showToast({ title: '功能开发中', icon: 'none' })
-              break
+
+    /**
+     * 降级发送消息（云函数）
+     */
+    async sendMessageFallback(content) {
+      try {
+        const result = await ChatAPI.sendGroupMessage(
+          this.groupId,
+          this.currentUserId,
+          {
+            content: content,
+            type: 'text'
           }
+        )
+        
+        if (result.success) {
+          console.log('[GroupChat] 云函数发送成功')
+          // 手动添加消息到列表（因为可能没有 Realtime）
+          const message = {
+            ...result.data.message,
+            isOwn: true
+          }
+          this.messages.push(message)
+          this.scrollToBottom()
+        } else {
+          throw new Error(result.error)
         }
-      })
-    },
-    
-    showEmojiPanel() {
-      uni.showToast({
-        title: '表情功能开发中',
-        icon: 'none'
-      })
-    },
-    
-    showMoreActions() {
-      this.showMorePanel = true
-    },
-    
-    sendImage() {
-      uni.chooseImage({
-        count: 1,
-        success: (res) => {
-          uni.showToast({
-            title: '图片发送功能开发中',
-            icon: 'none'
-          })
-        }
-      })
-      this.showMorePanel = false
-    },
-    
-    sendFile() {
-      uni.showToast({
-        title: '文件发送功能开发中',
-        icon: 'none'
-      })
-      this.showMorePanel = false
-    },
-    
-    sendLocation() {
-      uni.showToast({
-        title: '位置发送功能开发中',
-        icon: 'none'
-      })
-      this.showMorePanel = false
-    },
-    
-    callAI() {
-      uni.navigateTo({
-        url: '/pages/aichat/aichat?source=group'
-      })
-      this.showMorePanel = false
-    },
-    
-    formatTime(timestamp) {
-      const date = new Date(timestamp)
-      const now = new Date()
-      const diff = now - date
-      
-      if (diff < 60000) { // 1分钟内
-        return '刚刚'
-      } else if (diff < 3600000) { // 1小时内
-        return Math.floor(diff / 60000) + '分钟前'
-      } else if (diff < 86400000) { // 1天内
-        return Math.floor(diff / 3600000) + '小时前'
-      } else {
-        return date.toLocaleDateString()
+      } catch (error) {
+        console.error('[GroupChat] 云函数发送也失败:', error)
+        uni.showToast({
+          title: '发送失败，请重试',
+          icon: 'error'
+        })
       }
     },
-    
-    scrollToBottom() {
-      this.$nextTick(() => {
-        this.scrollTop = 999999
-      })
-    }
+
+    /**
+     * 使用 Realtime 加载消息
+     */
+    async loadMessagesRealtime(page = 1) {
+      try {
+        console.log('[GroupChat] 使用 Realtime 加载消息:', { page, groupId: this.groupId })
+        
+        const result = await realtimeChat.getMessages(
+          this.groupId,
+          this.pageSize,
+          (page - 1) * this.pageSize
+        )
+        
+        if (result.success) {
+          const messages = result.data.map(msg => ({
+            ...msg,
+            isOwn: msg.senderId === this.currentUserId
+          }))
+          
+          if (page === 1) {
+            this.messages = messages.reverse() // 最新消息在底部
+          } else {
+            this.messages.unshift(...messages.reverse())
+          }
+          
+          this.hasMoreMessages = messages.length === this.pageSize
+          this.currentPage = page
+          
+          console.log('[GroupChat] Realtime 消息加载成功:', messages.length)
+          return { success: true }
+        } else {
+          throw new Error(result.error)
+        }
+      } catch (error) {
+        console.error('[GroupChat] Realtime 加载消息失败:', error)
+        
+        // 降级到云函数
+        return await this.loadMessages(page)
+      }
+    },
+
+    /**
+     * 处理发送按钮点击
+     */
+    /**
+     * 处理发送按钮点击
+     */
+    handleSendClick() {
+      console.log('[GroupChat] 发送按钮被点击')
+      this.sendMessage() // 直接调用发送消息方法
+    },
+
+    /**
+     * 发送消息（兼容回车键）
+     */
+    async sendMessageKeyboard() {
+      console.log('[GroupChat] 回车发送消息')
+      this.sendMessage() // 直接调用发送消息方法
+    },
   }
 }
 </script>
 
 <style lang="scss" scoped>
-@import '../../styles/variables.scss';
+@import "../../styles/variables.scss";
 
 .chat-container {
+  height: 100vh;
+  background-color: $gray-50;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background: linear-gradient(180deg, rgba($primary-50, 0.3) 0%, $surface-primary 100%);
 }
 
 .chat-header {
+  background: $surface-primary;
+  padding: 20rpx 32rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: $space-4;
-  background: $surface-primary;
   border-bottom: 1rpx solid $border-light;
-  box-shadow: $shadow-sm;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: $space-3;
+  flex: 1;
 }
 
 .group-avatar {
   width: 80rpx;
   height: 80rpx;
-  background: linear-gradient(135deg, $secondary-500, $secondary-600);
-  border-radius: $radius-full;
+  border-radius: 50%;
+  background: $primary-500;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: $shadow-md;
+  margin-right: 24rpx;
 }
 
 .avatar-icon {
   font-size: 32rpx;
+  color: white;
 }
 
 .group-info {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
 }
 
 .group-name {
-  font-size: $text-lg;
-  font-weight: $font-semibold;
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
   color: $text-primary;
-  line-height: 1.2;
+  margin-bottom: 8rpx;
 }
 
 .online-count {
-  font-size: $text-sm;
-  color: $success-500;
+  display: block;
+  font-size: 24rpx;
+  color: $text-secondary;
 }
 
 .header-actions {
   display: flex;
-  gap: $space-2;
+  gap: 16rpx;
 }
 
 .action-btn {
-  width: 64rpx;
-  height: 64rpx;
-  background: rgba($gray-100, 0.8);
-  border-radius: $radius-xl;
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: $gray-50;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all $duration-200 $easing-smooth;
-  
-  &:active {
-    background: rgba($gray-200, 0.8);
-    transform: scale(0.95);
-  }
 }
 
 .action-icon {
-  font-size: 28rpx;
+  font-size: 24rpx;
 }
 
 .message-list {
   flex: 1;
-  padding: $space-4;
-  background: transparent;
+  padding: 0 32rpx;
 }
 
 .load-more {
+  padding: 32rpx 0;
   text-align: center;
-  padding: $space-4;
 }
 
 .load-text {
-  color: $primary-600;
-  font-size: $text-sm;
-  
-  &:active {
-    opacity: 0.7;
-  }
+  color: $text-secondary;
+  font-size: 28rpx;
 }
 
 .messages-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: $space-4;
+  padding: 32rpx 0;
 }
 
 .message-item {
-  &.system-message {
-    text-align: center;
-  }
+  margin-bottom: 32rpx;
 }
 
 .system-content {
-  background: rgba($gray-100, 0.8);
-  border-radius: $radius-xl;
-  padding: $space-2 $space-4;
-  display: inline-block;
-  margin: 0 auto;
+  text-align: center;
 }
 
 .system-text {
-  font-size: $text-sm;
+  background: rgba($text-secondary, 0.1);
   color: $text-secondary;
+  font-size: 24rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 32rpx;
+  display: inline-block;
+}
+
+.recalled-content {
+  text-align: center;
+}
+
+.recalled-text {
+  color: $text-secondary;
+  font-size: 24rpx;
+  font-style: italic;
 }
 
 .other-message {
   display: flex;
   align-items: flex-start;
-  gap: $space-2;
-}
-
-.own-message-content {
-  display: flex;
-  justify-content: flex-end;
+  margin-bottom: 16rpx;
 }
 
 .message-avatar {
-  width: 60rpx;
-  height: 60rpx;
-  flex-shrink: 0;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  overflow: hidden;
 }
 
 .avatar-img {
   width: 100%;
   height: 100%;
-  border-radius: $radius-full;
-  border: 2rpx solid $border-light;
 }
 
 .message-body {
-  max-width: 70%;
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  max-width: calc(100% - 160rpx);
 }
 
 .message-header {
   display: flex;
   align-items: center;
-  margin-bottom: $space-1;
-  
-  .other-message & {
-    justify-content: flex-start;
-  }
-  
-  .own-message-content & {
-    justify-content: flex-end;
-  }
+  margin-bottom: 8rpx;
+  gap: 16rpx;
 }
 
 .sender-name {
-  font-size: $text-sm;
+  font-size: 24rpx;
   color: $text-secondary;
-  font-weight: $font-medium;
-  margin-right: $space-2;
 }
 
 .message-time {
-  font-size: $text-xs;
+  font-size: 20rpx;
   color: $text-tertiary;
 }
 
 .message-status {
-  margin-left: $space-2;
+  display: flex;
+  align-items: center;
 }
 
 .status-icon {
-  font-size: $text-xs;
+  font-size: 20rpx;
+  color: $text-tertiary;
+  
+  &.read {
+    color: $success-500;
+  }
   
   &.error {
     color: $error-500;
@@ -704,243 +1729,296 @@ export default {
 }
 
 .message-bubble {
-  padding: $space-3 $space-4;
-  border-radius: $radius-xl;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
   word-wrap: break-word;
-  position: relative;
-  
-  &.other-bubble {
-    background: $surface-primary;
-    border: 1rpx solid $border-light;
-    box-shadow: $shadow-sm;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      left: -8rpx;
-      top: 16rpx;
-      width: 0;
-      height: 0;
-      border-top: 8rpx solid transparent;
-      border-bottom: 8rpx solid transparent;
-      border-right: 8rpx solid $surface-primary;
-    }
-  }
-  
-  &.own-bubble {
-    background: linear-gradient(135deg, $primary-500, $primary-600);
-    color: $surface-primary;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      right: -8rpx;
-      top: 16rpx;
-      width: 0;
-      height: 0;
-      border-top: 8rpx solid transparent;
-      border-bottom: 8rpx solid transparent;
-      border-left: 8rpx solid $primary-500;
-    }
-  }
+  line-height: 1.4;
+}
+
+.other-bubble {
+  background: $surface-secondary;
+  color: $text-primary;
+  border-top-left-radius: 8rpx;
+}
+
+.own-message-content {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16rpx;
+}
+
+.own-message-content .message-body {
+  max-width: calc(100% - 80rpx);
+}
+
+.own-message-content .message-header {
+  justify-content: flex-end;
+}
+
+.own-bubble {
+  background: $primary-500;
+  color: white;
+  border-top-right-radius: 8rpx;
 }
 
 .message-text {
-  font-size: $text-base;
-  line-height: 1.5;
+  font-size: 28rpx;
 }
 
 .typing-indicator {
   display: flex;
-  align-items: flex-end;
-  gap: $space-2;
-  margin-top: $space-2;
+  align-items: center;
+  padding: 16rpx 0;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
 .typing-avatar {
-  width: 60rpx;
-  height: 60rpx;
-  background: linear-gradient(135deg, $gray-400, $gray-500);
-  border-radius: $radius-full;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: $text-secondary;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24rpx;
-  flex-shrink: 0;
+  margin-right: 16rpx;
 }
 
 .typing-content {
-  background: $surface-primary;
-  border: 1rpx solid $border-light;
-  border-radius: $radius-xl;
-  padding: $space-3 $space-4;
-  box-shadow: $shadow-sm;
   display: flex;
   align-items: center;
-  gap: $space-2;
+  gap: 16rpx;
 }
 
 .typing-text {
-  font-size: $text-sm;
+  font-size: 24rpx;
   color: $text-secondary;
 }
 
 .typing-dots {
   display: flex;
-  gap: $space-1;
+  gap: 6rpx;
 }
 
 .dot {
-  width: 6rpx;
-  height: 6rpx;
-  background: $primary-400;
-  border-radius: $radius-full;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: $text-secondary;
   animation: typing 1.4s infinite ease-in-out;
-  
-  &:nth-child(1) { animation-delay: -0.32s; }
-  &:nth-child(2) { animation-delay: -0.16s; }
-  &:nth-child(3) { animation-delay: 0s; }
 }
 
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
+
 .input-area {
-  padding: $space-4;
-  background: $surface-primary;
+  background: $surface-secondary;
+  padding: 24rpx 32rpx;
   border-top: 1rpx solid $border-light;
-  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.1);
 }
 
 .input-container {
   display: flex;
   align-items: flex-end;
-  gap: $space-3;
+  gap: 16rpx;
 }
 
 .input-wrapper {
   flex: 1;
-  position: relative;
-  background: rgba($gray-50, 0.8);
-  border: 2rpx solid $border-light;
-  border-radius: $radius-2xl;
-  transition: all $duration-200 $easing-smooth;
-  
-  &:focus-within {
-    border-color: $primary-300;
-    background: $surface-primary;
-    box-shadow: 0 0 0 6rpx rgba($primary-100, 0.5);
-  }
+  background: $surface-secondary;
+  border-radius: 48rpx;
+  padding: 16rpx 24rpx;
+  display: flex;
+  align-items: center;
+  border: 1rpx solid $border-light;
 }
 
 .message-input {
-  width: 100%;
-  min-height: 80rpx;
-  max-height: 160rpx;
-  padding: $space-3 $space-4;
-  padding-right: 140rpx;
-  font-size: $text-base;
+  flex: 1;
+  font-size: 28rpx;
   line-height: 1.4;
   color: $text-primary;
-  background: transparent;
-  border: none;
-  border-radius: $radius-2xl;
-  
-  &::placeholder {
-    color: $text-tertiary;
-  }
-  
-  &:disabled {
-    opacity: 0.6;
-  }
+  min-height: 48rpx;
+  max-height: 200rpx;
 }
 
 .input-actions {
-  position: absolute;
-  right: $space-2;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
-  gap: $space-1;
+  gap: 16rpx;
+  margin-left: 16rpx;
 }
 
 .send-button {
-  flex-shrink: 0;
+  min-width: 120rpx;
 }
 
-.more-panel {
+/* 面板样式 */
+.emoji-panel,
+.more-panel,
+.message-action-panel,
+.member-panel {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: $surface-overlay;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.5);
   z-index: 1000;
+  display: flex;
+  align-items: flex-end;
 }
 
 .panel-content {
-  background: $surface-primary;
-  border-radius: $radius-2xl $radius-2xl 0 0;
+  background: $surface-secondary;
+  border-radius: 32rpx 32rpx 0 0;
   width: 100%;
-  max-height: 60vh;
-  padding: $space-6;
-  animation: slideUp $duration-300 $easing-smooth;
+  max-height: 80vh;
+  animation: slideUp 0.3s ease-out;
 }
 
 .panel-header {
+  padding: 32rpx;
+  border-bottom: 1rpx solid $border-light;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: $space-6;
+  justify-content: space-between;
 }
 
 .panel-title {
-  font-size: $text-lg;
-  font-weight: $font-semibold;
+  font-size: 32rpx;
+  font-weight: 600;
   color: $text-primary;
 }
 
 .panel-close {
-  font-size: $text-xl;
+  font-size: 36rpx;
   color: $text-secondary;
-  padding: $space-2;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 16rpx;
+  padding: 32rpx;
+  max-height: 400rpx;
+  overflow-y: auto;
+}
+
+.emoji-item {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: $surface-secondary;
+}
+
+.emoji-text {
+  font-size: 40rpx;
 }
 
 .panel-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: $space-4;
+  gap: 32rpx;
+  padding: 32rpx;
 }
 
 .panel-action {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: $space-2;
-  padding: $space-4;
-  border-radius: $radius-xl;
-  background: rgba($gray-50, 0.5);
-  transition: all $duration-200 $easing-smooth;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  background: $surface-secondary;
   
-  &:active {
-    background: rgba($gray-100, 0.8);
-    transform: scale(0.95);
+  &.danger {
+    background: rgba($error-500, 0.1);
+    
+    .action-text {
+      color: $error-500;
+    }
   }
 }
 
+.panel-action .action-icon {
+  font-size: 48rpx;
+}
+
 .action-text {
-  font-size: $text-sm;
+  font-size: 24rpx;
   color: $text-secondary;
+}
+
+.member-list {
+  max-height: 60vh;
+  padding: 0 32rpx 32rpx;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid $border-light;
+}
+
+.member-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+}
+
+.member-info {
+  flex: 1;
+}
+
+.member-name {
+  display: block;
+  font-size: 28rpx;
+  color: $text-primary;
+  margin-bottom: 8rpx;
+}
+
+.member-status {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.status-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: $text-tertiary;
+  
+  &.online {
+    background: $success-500;
+  }
+}
+
+.status-text {
+  font-size: 24rpx;
+  color: $text-secondary;
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes typing {
   0%, 80%, 100% {
     transform: scale(0);
-    opacity: 0.5;
   }
   40% {
     transform: scale(1);
-    opacity: 1;
   }
 }
 

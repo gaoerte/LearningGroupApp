@@ -2,7 +2,7 @@
   "name": "learning-group-app",
   "version": "1.0.0",
   "description": "Learning Group App - uni-app project",
-  "main": "main.uts",
+  "main": "main.js",
   "scripts": {
     "build:app": "uni build --platform app",
     "build:h5": "uni build --platform h5",
@@ -16,11 +16,10 @@
     "lint": "echo \"Linting not configured\" && exit 0"
   },
   "dependencies": {
-    "@dcloudio/uni-app": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
-    "vite-plugin-files-copy": "^3.8.0"
+    "fs-extra": "^11.2.0"
   },
   "browserslist": [
     "Android >= 4.4",

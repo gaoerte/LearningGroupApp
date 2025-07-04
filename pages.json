@@ -101,6 +101,14 @@
         "navigationBarBackgroundColor": "#0ea5e9",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/chat-demo/chat-demo",
+      "style": {
+        "navigationBarTitleText": "实时聊天演示",
+        "navigationBarBackgroundColor": "#0ea5e9",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "globalStyle": {

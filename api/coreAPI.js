@@ -1,5 +1,7 @@
 // api/coreAPI.js - 核心API封装，统一调用 supabaseCore 云函数
 
+import { isCloudInitialized, cloudConfig } from '../config/cloud.js'
+
 /**
  * 核心API类 - 统一的业务接口
  */
@@ -15,9 +17,17 @@ class CoreAPI {
     return new Promise((resolve, reject) => {
       console.log(`[CoreAPI] 调用: ${action}`, data);
       
+      // 检查云开发是否已初始化
+      if (!isCloudInitialized()) {
+        console.error('[CoreAPI] 云开发未初始化，请先调用 wx.cloud.init()');
+        reject(new Error('云开发未初始化，请先在App.vue中调用云开发初始化'));
+        return;
+      }
+      
       uni.cloud.callFunction({
         name: 'supabaseCore',
         data: { action, data },
+        timeout: cloudConfig.timeout, // 使用配置的超时时间
         success: (res) => {
           try {
             let result = res.result;

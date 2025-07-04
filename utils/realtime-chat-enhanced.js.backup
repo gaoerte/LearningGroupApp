@@ -1,0 +1,383 @@
+// utils/realtime-chat-enhanced.js - 增强版实时聊天客户端
+
+import { createClient } from '@supabase/supabase-js'
+import { cloudConfig } from '../config/cloud.js'
+
+/**
+ * 增强版实时聊天客户端
+ * 支持 Supabase Realtime + 云函数双重策略
+ */
+export class EnhancedRealtimeChatClient {
+  constructor(config = {}) {
+    this.config = {
+      // Supabase 配置
+      supabaseUrl: 'https://klpseujbhwvifsfshfdx.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtscHNldWpiaHd2aWZzZnNoZmR4Iiwicm9zZSI6ImFub24iLCJpYXQiOjE3NTE0NDA4NTUsImV4cCI6MjA2NzAxNjg1NX0.LLLc49P59cGWsCQDAXWZ58_MJgQ8q1Pmm-Bv7hUOVpI',
+      
+      // 轮询配置（降级方案）
+      pollingInterval: 2000,
+      maxRetries: 3,
+      ...config
+    }
+    
+    this.supabase = null
+    this.subscriptions = new Map()
+    this.pollingTimers = new Map()
+    this.messageCache = new Map()
+    this.isRealtimeAvailable = false
+    
+    this._initializeClient()
+  }
+
+  /**
+   * 初始化客户端
+   */
+  async _initializeClient() {
+    try {
+      // 尝试初始化 Supabase 客户端
+      this.supabase = createClient(this.config.supabaseUrl, this.config.supabaseKey, {
+        realtime: {
+          params: {
+            eventsPerSecond: 10
+          }
+        }
+      })
+      
+      // 测试 Realtime 连接
+      await this._testRealtimeConnection()
+      
+      console.log('[EnhancedChat] Supabase 客户端初始化成功')
+    } catch (error) {
+      console.warn('[EnhancedChat] Supabase 初始化失败，将使用云函数模式:', error)
+      this.isRealtimeAvailable = false
+    }
+  }
+
+  /**
+   * 测试实时连接
+   */
+  async _testRealtimeConnection() {
+    return new Promise((resolve, reject) => {
+      if (!this.supabase) {
+        reject(new Error('Supabase 客户端未初始化'))
+        return
+      }
+
+      const channel = this.supabase.channel('test-connection')
+      
+      const timeout = setTimeout(() => {
+        channel.unsubscribe()
+        this.isRealtimeAvailable = false
+        resolve(false)
+      }, 5000)
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          clearTimeout(timeout)
+          this.isRealtimeAvailable = true
+          channel.unsubscribe()
+          resolve(true)
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[EnhancedChat] Realtime 连接测试成功')
+          } else if (status === 'CHANNEL_ERROR') {
+            clearTimeout(timeout)
+            this.isRealtimeAvailable = false
+            channel.unsubscribe()
+            resolve(false)
+          }
+        })
+    })
+  }
+
+  /**
+   * 订阅群组消息
+   * @param {number} groupId - 群组ID
+   * @param {Function} onMessage - 消息回调
+   * @param {Function} onError - 错误回调
+   */
+  async subscribeToGroup(groupId, onMessage, onError = null) {
+    console.log(`[EnhancedChat] 订阅群组 ${groupId}`)
+    
+    if (this.isRealtimeAvailable && this.supabase) {
+      return this._subscribeRealtime(groupId, onMessage, onError)
+    } else {
+      return this._subscribePolling(groupId, onMessage, onError)
+    }
+  }
+
+  /**
+   * 使用 Supabase Realtime 订阅
+   */
+  async _subscribeRealtime(groupId, onMessage, onError) {
+    try {
+      const channel = this.supabase
+        .channel(`group-${groupId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'group_messages',
+            filter: `group_id=eq.${groupId}`
+          },
+          (payload) => {
+            console.log('[EnhancedChat] 收到实时消息:', payload)
+            onMessage(payload.new)
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'group_messages',
+            filter: `group_id=eq.${groupId}`
+          },
+          (payload) => {
+            console.log('[EnhancedChat] 消息更新:', payload)
+            onMessage(payload.new, 'update')
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`[EnhancedChat] Realtime 订阅群组 ${groupId} 成功`)
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error(`[EnhancedChat] Realtime 订阅群组 ${groupId} 失败`)
+            if (onError) onError(new Error('Realtime subscription failed'))
+            // 降级到轮询模式
+            this._subscribePolling(groupId, onMessage, onError)
+          }
+        })
+
+      this.subscriptions.set(groupId, { type: 'realtime', channel })
+      return { success: true, type: 'realtime' }
+    } catch (error) {
+      console.error('[EnhancedChat] Realtime 订阅失败:', error)
+      if (onError) onError(error)
+      // 降级到轮询模式
+      return this._subscribePolling(groupId, onMessage, onError)
+    }
+  }
+
+  /**
+   * 使用轮询订阅（降级方案）
+   */
+  async _subscribePolling(groupId, onMessage, onError) {
+    console.log(`[EnhancedChat] 使用轮询模式订阅群组 ${groupId}`)
+    
+    let lastMessageTime = new Date().toISOString()
+    
+    const poll = async () => {
+      try {
+        // 通过云函数获取新消息
+        const messages = await this.getGroupMessages(groupId, 10, lastMessageTime)
+        
+        if (messages && messages.length > 0) {
+          messages.forEach(message => {
+            onMessage(message)
+          })
+          lastMessageTime = messages[0].created_at
+        }
+      } catch (error) {
+        console.warn('[EnhancedChat] 轮询获取消息失败:', error)
+        if (onError) onError(error)
+      }
+    }
+
+    const timer = setInterval(poll, this.config.pollingInterval)
+    this.pollingTimers.set(groupId, timer)
+    this.subscriptions.set(groupId, { type: 'polling', timer })
+    
+    return { success: true, type: 'polling' }
+  }
+
+  /**
+   * 取消订阅群组
+   * @param {number} groupId - 群组ID
+   */
+  async unsubscribeFromGroup(groupId) {
+    const subscription = this.subscriptions.get(groupId)
+    
+    if (subscription) {
+      if (subscription.type === 'realtime') {
+        subscription.channel.unsubscribe()
+      } else if (subscription.type === 'polling') {
+        clearInterval(subscription.timer)
+      }
+      
+      this.subscriptions.delete(groupId)
+      console.log(`[EnhancedChat] 取消订阅群组 ${groupId}`)
+    }
+  }
+
+  /**
+   * 发送消息
+   * @param {number} groupId - 群组ID
+   * @param {Object} messageData - 消息数据
+   */
+  async sendMessage(groupId, messageData) {
+    try {
+      // 优先使用直接 Supabase 插入（更快）
+      if (this.supabase && this.isRealtimeAvailable) {
+        const { data, error } = await this.supabase
+          .from('group_messages')
+          .insert([{
+            group_id: groupId,
+            content: messageData.content,
+            message_type: messageData.messageType || 'text',
+            sender_id: messageData.senderId,
+            sender_name: messageData.senderName,
+            metadata: messageData.metadata || {}
+          }])
+          .select()
+
+        if (error) throw error
+        
+        console.log('[EnhancedChat] 直接发送消息成功:', data)
+        return data[0]
+      } else {
+        // 降级使用云函数
+        return this._sendMessageViaCloudFunction(groupId, messageData)
+      }
+    } catch (error) {
+      console.warn('[EnhancedChat] 直接发送失败，使用云函数:', error)
+      return this._sendMessageViaCloudFunction(groupId, messageData)
+    }
+  }
+
+  /**
+   * 通过云函数发送消息
+   */
+  async _sendMessageViaCloudFunction(groupId, messageData) {
+    return new Promise((resolve, reject) => {
+      uni.cloud.callFunction({
+        name: 'supabaseCore',
+        data: {
+          action: 'sendGroupMessage',
+          data: { groupId, ...messageData }
+        },
+        timeout: cloudConfig.timeout,
+        success: (res) => {
+          const result = res.result
+          if (result.success) {
+            resolve(result.data)
+          } else {
+            reject(new Error(result.error))
+          }
+        },
+        fail: (error) => {
+          reject(error)
+        }
+      })
+    })
+  }
+
+  /**
+   * 获取群组消息
+   * @param {number} groupId - 群组ID
+   * @param {number} limit - 限制数量
+   * @param {string} since - 从什么时候开始
+   */
+  async getGroupMessages(groupId, limit = 50, since = null) {
+    try {
+      if (this.supabase && this.isRealtimeAvailable) {
+        let query = this.supabase
+          .from('group_messages')
+          .select('*')
+          .eq('group_id', groupId)
+          .order('created_at', { ascending: false })
+          .limit(limit)
+
+        if (since) {
+          query = query.gt('created_at', since)
+        }
+
+        const { data, error } = await query
+        if (error) throw error
+        
+        return data.reverse() // 按时间正序返回
+      } else {
+        // 使用云函数
+        return this._getMessagesViaCloudFunction(groupId, limit, since)
+      }
+    } catch (error) {
+      console.warn('[EnhancedChat] 直接获取消息失败，使用云函数:', error)
+      return this._getMessagesViaCloudFunction(groupId, limit, since)
+    }
+  }
+
+  /**
+   * 通过云函数获取消息
+   */
+  async _getMessagesViaCloudFunction(groupId, limit, since) {
+    return new Promise((resolve, reject) => {
+      uni.cloud.callFunction({
+        name: 'supabaseCore',
+        data: {
+          action: 'getGroupMessages',
+          data: { groupId, limit, since }
+        },
+        timeout: cloudConfig.timeout,
+        success: (res) => {
+          const result = res.result
+          if (result.success) {
+            resolve(result.data.messages || [])
+          } else {
+            reject(new Error(result.error))
+          }
+        },
+        fail: (error) => {
+          reject(error)
+        }
+      })
+    })
+  }
+
+  /**
+   * 清理资源
+   */
+  destroy() {
+    // 取消所有订阅
+    for (const [groupId] of this.subscriptions) {
+      this.unsubscribeFromGroup(groupId)
+    }
+    
+    // 清理定时器
+    for (const timer of this.pollingTimers.values()) {
+      clearInterval(timer)
+    }
+    
+    this.subscriptions.clear()
+    this.pollingTimers.clear()
+    this.messageCache.clear()
+    
+    console.log('[EnhancedChat] 客户端已销毁')
+  }
+}
+
+// 创建全局实例
+let globalChatClient = null
+
+/**
+ * 获取全局聊天客户端实例
+ */
+export function getChatClient() {
+  if (!globalChatClient) {
+    globalChatClient = new EnhancedRealtimeChatClient()
+  }
+  return globalChatClient
+}
+
+/**
+ * 销毁全局聊天客户端
+ */
+export function destroyChatClient() {
+  if (globalChatClient) {
+    globalChatClient.destroy()
+    globalChatClient = null
+  }
+}
+
+export default EnhancedRealtimeChatClient

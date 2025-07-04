@@ -1,79 +1,83 @@
 /**
- * 现代化设计系统样式配置
- * 
- * 导入设计系统变量和全局样式
+ * uni-app 全局样式文件
+ * 传统 uni-app 兼容版本 - 纯 CSS 语法
  */
 
-// 导入设计系统变量
-@import '@/styles/variables.scss';
-@import '@/styles/global.scss';
+/* 全局 CSS 变量定义 */
+:root {
+  /* 主题颜色 */
+  --primary-color: #0ea5e9;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  
+  /* 文本颜色 */
+  --text-color: #374151;
+  --text-color-inverse: #ffffff;
+  --text-color-grey: #6b7280;
+  --text-color-placeholder: #9ca3af;
+  --text-color-disable: #d1d5db;
+  
+  /* 背景颜色 */
+  --bg-color: #ffffff;
+  --bg-color-grey: #f8f8f8;
+  --bg-color-hover: #f1f1f1;
+  --bg-color-mask: rgba(0, 0, 0, 0.4);
+  
+  /* 边框颜色 */
+  --border-color: #e5e7eb;
+  
+  /* 字体大小 */
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-xxl: 20px;
+  
+  /* 圆角 */
+  --border-radius-sm: 2px;
+  --border-radius-base: 4px;
+  --border-radius-lg: 8px;
+  --border-radius-xl: 12px;
+  
+  /* 间距 */
+  --spacing-sm: 8px;
+  --spacing-base: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+}
 
-/**
- * uni-app 内置的常用样式变量
- * 保持兼容性的同时使用新的设计系统
- */
-
-/* 颜色变量 - 使用新的设计系统颜色 */
-
-/* 行为相关颜色 */
-$uni-color-primary: #0ea5e9;     // 使用新的主色
-$uni-color-success: #10b981;     // 使用新的成功色  
-$uni-color-warning: #f59e0b;     // 使用新的警告色
-$uni-color-error: #ef4444;       // 使用新的错误色
-
-/* 文字基本颜色 */
-$uni-text-color: #374151;              // 基本色 - 使用 gray-700
-$uni-text-color-inverse: #ffffff;       // 反色
-$uni-text-color-grey: #6b7280;         // 辅助灰色 - 使用 gray-500
-$uni-text-color-placeholder: #9ca3af;   // 占位符 - 使用 gray-400
-$uni-text-color-disable: #d1d5db;      // 禁用状态 - 使用 gray-300
-
-/* 背景颜色 */
-$uni-bg-color: #f9fafb;               // 页面背景 - 使用 gray-50
-$uni-bg-color-grey: #f3f4f6;          // 灰色背景 - 使用 gray-100
-$uni-bg-color-hover: #e5e7eb;         // 悬停背景 - 使用 gray-200
-$uni-bg-color-mask: rgba(0, 0, 0, 0.4); // 遮罩背景
-
-/* 边框颜色 */
-$uni-border-color: #e5e7eb;           // 边框色 - 使用 gray-200
-
-/* 尺寸变量 */
-$uni-font-size-sm: 24rpx;             // 小号字体
-$uni-font-size-base: 28rpx;           // 基础字体  
-$uni-font-size-lg: 32rpx;             // 大号字体
-
-/* 图片加载中的默认背景 */
-$uni-color-subtitle: #6b7280;         // 副标题颜色
-$uni-font-size-xxl: 44rpx;           // 超大字体
-$uni-color-paragraph: #4b5563;        // 段落文字颜色
-
-/* 现代化组件样式扩展 */
-
-// 卡片阴影效果
+/* 卡片样式 */
 .uni-card {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
-  border-radius: 16rpx;
-  transition: all 0.3s ease-out;
-  
-  &:hover {
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2rpx);
-  }
+  background-color: var(--bg-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-base);
+  margin: var(--spacing-sm);
 }
 
-// 现代化按钮样式
+/* 现代化按钮样式 */
 .uni-button-modern {
-  border-radius: 16rpx;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-  transition: all 0.3s ease-out;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-sm) var(--spacing-base);
+  font-size: var(--font-size-base);
   font-weight: 500;
-  
-  &:active {
-    transform: translateY(1rpx);
-  }
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-// 渐变背景工具类
+.uni-button-primary {
+  background-color: var(--primary-color);
+  color: var(--text-color-inverse);
+}
+
+.uni-button-success {
+  background-color: var(--success-color);
+  color: var(--text-color-inverse);
+}
+
+/* 渐变背景工具类 */
 .bg-gradient-primary {
   background: linear-gradient(135deg, #0ea5e9 0%, #a855f7 100%);
 }
@@ -85,49 +89,40 @@ $uni-color-paragraph: #4b5563;        // 段落文字颜色
 .bg-gradient-warm {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
 }
-$uni-bg-color:#ffffff;
-$uni-bg-color-grey:#f8f8f8;
-$uni-bg-color-hover:#f1f1f1;//点击状态颜色
-$uni-bg-color-mask:rgba(0, 0, 0, 0.4);//遮罩颜色
 
-/* 边框颜色 */
-$uni-border-color:#c8c7cc;
+/* 通用工具类 */
+.text-center {
+  text-align: center;
+}
 
-/* 尺寸变量 */
+.flex {
+  display: flex;
+}
 
-/* 文字尺寸 */
-$uni-font-size-sm:12px;
-$uni-font-size-base:14px;
-$uni-font-size-lg:16px;
+.flex-column {
+  flex-direction: column;
+}
 
-/* 图片尺寸 */
-$uni-img-size-sm:20px;
-$uni-img-size-base:26px;
-$uni-img-size-lg:40px;
+.justify-center {
+  justify-content: center;
+}
 
-/* Border Radius */
-$uni-border-radius-sm: 2px;
-$uni-border-radius-base: 3px;
-$uni-border-radius-lg: 6px;
-$uni-border-radius-circle: 50%;
+.align-center {
+  align-items: center;
+}
 
-/* 水平间距 */
-$uni-spacing-row-sm: 5px;
-$uni-spacing-row-base: 10px;
-$uni-spacing-row-lg: 15px;
+.p-sm {
+  padding: var(--spacing-sm);
+}
 
-/* 垂直间距 */
-$uni-spacing-col-sm: 4px;
-$uni-spacing-col-base: 8px;
-$uni-spacing-col-lg: 12px;
+.p-base {
+  padding: var(--spacing-base);
+}
 
-/* 透明度 */
-$uni-opacity-disabled: 0.3; // 组件禁用态的透明度
+.m-sm {
+  margin: var(--spacing-sm);
+}
 
-/* 文章场景相关 */
-$uni-color-title: #2C405A; // 文章标题颜色
-$uni-font-size-title:20px;
-$uni-color-subtitle: #555555; // 二级标题颜色
-$uni-font-size-subtitle:26px;
-$uni-color-paragraph: #3F536E; // 文章段落颜色
-$uni-font-size-paragraph:15px;
+.m-base {
+  margin: var(--spacing-base);
+}

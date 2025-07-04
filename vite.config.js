@@ -1,104 +1,94 @@
 import { defineConfig } from 'vite';
-import uni from '@dcloudio/vite-plugin-uni';
-import { resolve } from 'path';
-import { fileURLToPath } from 'node:url';
+import fs from 'fs-extra';
 import path from 'path';
-import CopyPlugin from 'vite-plugin-files-copy';
+import { fileURLToPath } from 'url';
+import uni from '@dcloudio/vite-plugin-uni';
 
-// 获取当前文件的目录
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// 获取当前文件的目录路径（ES模块兼容）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// 获取环境变量，确定目标路径
-const env = process.env.NODE_ENV;
-const targetPath = './' + (env === 'development' ? 'unpackage/dist/dev' : 'unpackage/dist/build') + '/mp-weixin/cloudfunctions';
+function copyCloudFunctions() {
+  return {
+    name: 'copy-cloudfunctions',
+    enforce: 'post',
+    async writeBundle() {
+      try {
+        const sourceDir = path.resolve(__dirname, 'cloudfunctions');
+        
+        // 检查源目录是否存在
+        if (!await fs.pathExists(sourceDir)) {
+          console.warn('[云函数复制] 源目录不存在:', sourceDir);
+          return;
+        }
 
-console.log('🔧 云函数复制目标路径:', targetPath);
+        // 构建目标路径
+        const platform = process.env.UNI_PLATFORM || 'mp-weixin';
+        const mode = process.env.NODE_ENV === 'production' ? 'build' : 'dev';
+        
+        const targetDir = path.join(
+          __dirname,
+          'unpackage/dist',
+          mode,
+          platform,
+          'cloudfunctions'
+        );
+
+        console.log('[云函数复制] 开始复制...');
+        console.log('[云函数复制] 源目录:', sourceDir);
+        console.log('[云函数复制] 目标目录:', targetDir);
+
+        // 确保目标目录存在
+        await fs.ensureDir(targetDir);
+        
+        // 复制云函数
+        await fs.copy(sourceDir, targetDir, {
+          overwrite: true,
+          filter: (src) => {
+            // 过滤掉不需要的文件
+            const relativePath = path.relative(sourceDir, src);
+            return !relativePath.includes('node_modules') && 
+                   !relativePath.includes('.git') &&
+                   !relativePath.endsWith('.log');
+          }
+        });
+
+        console.log('[云函数复制] 复制完成!');
+      } catch (error) {
+        console.error('[云函数复制] 复制失败:', error);
+      }
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     uni(),
-    CopyPlugin({
-      patterns: [
-        {
-          from: './cloudfunctions',
-          to: targetPath
-        },
-      ],
-    }),
+    copyCloudFunctions()
   ],
-  
-  // 路径别名
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './'),
-      '@/api': resolve(__dirname, './api'),
-      '@/components': resolve(__dirname, './components'),
-      '@/pages': resolve(__dirname, './pages'),
-      '@/static': resolve(__dirname, './static'),
-      '@/styles': resolve(__dirname, './styles'),
-      '@/utils': resolve(__dirname, './utils'),
-      '@/store': resolve(__dirname, './store')
-    }
-  },
-  
-  // 构建优化
+  // 添加一些优化配置
   build: {
-    // 分包优化
+    // 输出目录
+    outDir: 'unpackage/dist',
+    // 静态资源处理
+    assetsDir: 'static',
+    // 代码分割
     rollupOptions: {
       output: {
-        // 手动分包
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
-          if (id.includes('/api/')) {
-            return 'api';
-          }
-          if (id.includes('/components/')) {
-            return 'components';
-          }
-        }
-      }
-    },
-    // 资源内联阈值
-    assetsInlineLimit: 4096,
-    // 启用 CSS 代码分割
-    cssCodeSplit: true,
-    // 构建目标
-    target: 'es2015'
-  },
-  
-  // CSS 预处理器配置
-  css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData: `
-          @import "@/styles/variables.scss";
-          @import "@/styles/mixins.scss";
-        `
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     }
   },
-  
-  // 开发服务器配置
-  server: {
-    port: 3000,
-    open: true,
-    cors: true,
-    proxy: {
-      // API 代理配置（如需要）
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
+  // 解决路径别名问题
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
+      '@/api': path.resolve(__dirname, 'api'),
+      '@/utils': path.resolve(__dirname, 'utils'),
+      '@/components': path.resolve(__dirname, 'components'),
+      '@/styles': path.resolve(__dirname, 'styles')
     }
-  },
-  
-  // 预构建优化
-  optimizeDeps: {
-    include: [
-      // 添加需要预构建的依赖
-    ]
   }
 });

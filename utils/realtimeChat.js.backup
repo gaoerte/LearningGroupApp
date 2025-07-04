@@ -1,0 +1,205 @@
+// 智能实时聊天客户端 - 环境适配版
+import envDetector from './env.js';
+
+// 动态导入 Supabase 客户端
+async function getSupabaseClient() {
+  try {
+    if (envDetector.supportsSupabaseNative()) {
+      // 浏览器环境：使用原生 Supabase 客户端
+      console.log('[RealtimeChat] 使用原生 Supabase 客户端');
+      const { createClient } = await import('@supabase/supabase-js');
+      return createClient(
+        'https://your-project.supabase.co',
+        'your-anon-key'
+      );
+    } else {
+      // 微信小程序环境：使用适配器
+      console.log('[RealtimeChat] 使用微信小程序适配器');
+      const { createClient } = await import('./supabase-miniprogram.js');
+      return createClient(
+        'https://your-project.supabase.co',
+        'your-anon-key'
+      );
+    }
+  } catch (error) {
+    console.error('[RealtimeChat] 创建 Supabase 客户端失败:', error);
+    // 返回适配器作为降级方案
+    const { createClient } = await import('./supabase-miniprogram.js');
+    return createClient('fallback', 'fallback');
+  }
+}
+
+class RealtimeChatClient {
+  constructor() {
+    this.supabase = null;
+    this.channel = null;
+    this.isConnected = false;
+    this.messageCallbacks = new Set();
+    this.initPromise = this.initialize();
+  }
+
+  async initialize() {
+    try {
+      console.log('[RealtimeChat] 初始化聊天客户端...');
+      envDetector.printEnvironmentInfo();
+      
+      this.supabase = await getSupabaseClient();
+      console.log('[RealtimeChat] Supabase 客户端创建成功');
+      
+      return true;
+    } catch (error) {
+      console.error('[RealtimeChat] 初始化失败:', error);
+      return false;
+    }
+  }
+
+  // 确保客户端已初始化
+  async ensureInitialized() {
+    await this.initPromise;
+    if (!this.supabase) {
+      throw new Error('Supabase 客户端初始化失败');
+    }
+  }
+
+  // 订阅群组消息
+  async subscribeToGroupMessages(groupId, callback) {
+    try {
+      await this.ensureInitialized();
+      
+      console.log(`[RealtimeChat] 订阅群组消息: ${groupId}`);
+      
+      // 添加回调函数
+      this.messageCallbacks.add(callback);
+      
+      // 创建频道
+      this.channel = this.supabase
+        .channel(`group_messages_${groupId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'group_messages',
+            filter: `group_id=eq.${groupId}`
+          },
+          (payload) => {
+            console.log('[RealtimeChat] 收到新消息:', payload);
+            // 通知所有回调函数
+            this.messageCallbacks.forEach(cb => {
+              try {
+                cb(payload.new);
+              } catch (error) {
+                console.error('[RealtimeChat] 回调函数执行错误:', error);
+              }
+            });
+          }
+        )
+        .subscribe((status) => {
+          console.log('[RealtimeChat] 订阅状态:', status);
+          this.isConnected = status === 'SUBSCRIBED';
+        });
+
+      return true;
+    } catch (error) {
+      console.error('[RealtimeChat] 订阅失败:', error);
+      return false;
+    }
+  }
+
+  // 发送消息
+  async sendMessage(groupId, senderId, content, senderName) {
+    try {
+      await this.ensureInitialized();
+      
+      console.log('[RealtimeChat] 发送消息:', { groupId, senderId, content });
+      
+      const messageData = {
+        group_id: groupId,
+        sender_id: senderId,
+        content: content,
+        sender_name: senderName || '匿名用户',
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await this.supabase
+        .from('group_messages')
+        .insert(messageData);
+
+      if (error) {
+        console.error('[RealtimeChat] 发送消息错误:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('[RealtimeChat] 消息发送成功:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[RealtimeChat] 发送消息异常:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // 获取历史消息
+  async getMessages(groupId, limit = 50) {
+    try {
+      await this.ensureInitialized();
+      
+      console.log(`[RealtimeChat] 获取历史消息: ${groupId}, limit: ${limit}`);
+      
+      const { data, error } = await this.supabase
+        .from('group_messages')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('[RealtimeChat] 获取消息错误:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log(`[RealtimeChat] 获取到 ${data?.length || 0} 条消息`);
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('[RealtimeChat] 获取消息异常:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // 取消订阅
+  async unsubscribe() {
+    try {
+      if (this.channel) {
+        console.log('[RealtimeChat] 取消订阅');
+        await this.channel.unsubscribe();
+        this.channel = null;
+        this.isConnected = false;
+        this.messageCallbacks.clear();
+      }
+    } catch (error) {
+      console.error('[RealtimeChat] 取消订阅错误:', error);
+    }
+  }
+
+  // 获取连接状态
+  getConnectionStatus() {
+    return {
+      isConnected: this.isConnected,
+      hasSupabase: !!this.supabase,
+      hasChannel: !!this.channel,
+      callbackCount: this.messageCallbacks.size,
+      environment: envDetector.getPlatform()
+    };
+  }
+}
+
+// 创建单例
+let chatClient = null;
+
+export function getChatClient() {
+  if (!chatClient) {
+    chatClient = new RealtimeChatClient();
+  }
+  return chatClient;
+}
+
+export default RealtimeChatClient;

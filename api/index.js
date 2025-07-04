@@ -5,10 +5,11 @@ import { CoreAPI } from './coreAPI.js';
 import { GroupAPI } from './groupAPI.js';
 import { UserAPI } from './userAPI.js';
 import { TestAPI } from './testAPI.js';
+import { ChatAPI } from './chatAPI.js';
 import { SupabaseConnection } from './supabaseConnection.js';
 
 // 统一导出
-export { CoreAPI, GroupAPI, UserAPI, TestAPI, SupabaseConnection };
+export { CoreAPI, GroupAPI, UserAPI, TestAPI, ChatAPI, SupabaseConnection };
 
 // 便捷访问对象
 export const API = {
@@ -16,6 +17,7 @@ export const API = {
   Group: GroupAPI,
   User: UserAPI,
   Test: TestAPI,
+  Chat: ChatAPI,
   Supabase: SupabaseConnection
 };
 

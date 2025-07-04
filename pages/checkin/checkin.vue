@@ -157,11 +157,11 @@
 </template>
 
 <script>
-import ModernCard from '@/components/ModernCard.vue'
-import ModernButton from '@/components/ModernButton.vue'
-import ModernInput from '@/components/ModernInput.vue'
-import Modal from '@/components/Modal.vue'
-import { notify } from '@/utils/notification.js'
+import ModernCard from '../../components/ModernCard.vue'
+import ModernButton from '../../components/ModernButton.vue'
+import ModernInput from '../../components/ModernInput.vue'
+import Modal from '../../components/Modal.vue'
+import { notify } from '../../utils/notification.js'
 
 export default {
   name: 'CheckinPage',

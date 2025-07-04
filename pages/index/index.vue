@@ -91,7 +91,7 @@
 </template>
 
 <script>
-import { StorageManager } from '@/utils/storage.js';
+import { StorageManager } from '../../utils/storage.js';
 
 export default {
   name: 'IndexPage',

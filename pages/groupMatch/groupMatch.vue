@@ -115,8 +115,8 @@
 <script>
 import ModernCard from '../../components/ModernCard.vue'
 import ModernButton from '../../components/ModernButton.vue'
-import { GroupAPI } from '@/api/groupAPI.js';
-import { StorageManager } from '@/utils/storage.js';
+import { GroupAPI } from '../../api/groupAPI.js';
+import { StorageManager } from '../../utils/storage.js';
 
 export default {
   components: {
