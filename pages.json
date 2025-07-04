@@ -48,6 +48,12 @@
       }
     },
     {
+      "path": "pages/createGroup/createGroup",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/personalCenter/personalCenter",
       "style": {
         "navigationStyle": "custom"

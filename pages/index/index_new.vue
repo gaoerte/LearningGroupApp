@@ -179,9 +179,9 @@ export default {
       return '晚上好'
     }
   },
-  onLoad() {
+  async onLoad() {
     console.log('首页加载')
-    this.initPage()
+    await this.initPageWithAuth()
   },
   onShow() {
     console.log('首页显示')
@@ -193,6 +193,231 @@ export default {
     }, 100)
   },
   methods: {
+    // 集成认证管理器的页面初始化方法
+    async initPageWithAuth() {
+      try {
+        console.log('[首页] 开始页面认证初始化')
+        
+        // 1. 内联定义认证管理器（避免模块导入问题）
+        const authManager = this.getAuthManager()
+        
+        // 2. 进行页面认证初始化（自动同步用户到Supabase）
+        const userInfo = await authManager.initPageAuth({
+          requireAuth: false, // 首页不强制要求登录
+          autoSync: true,     // 自动同步到Supabase
+        })
+        
+        if (userInfo) {
+          this.isLoggedIn = true
+          this.userInfo = {
+            name: userInfo.nickname || userInfo.name || '学习达人',
+            avatar: userInfo.avatar_url || userInfo.avatarUrl || ''
+          }
+          console.log('[首页] 用户认证完成，已同步到Supabase:', userInfo)
+          
+          // 3. 加载用户数据
+          await this.loadUserData()
+        } else {
+          this.isLoggedIn = false
+          console.log('[首页] 用户未登录')
+        }
+        
+      } catch (error) {
+        console.error('[首页] 页面认证初始化失败:', error)
+        this.isLoggedIn = false
+        this.notifyError('页面初始化失败', '请尝试重新进入')
+      }
+    },
+    
+    // 内联认证管理器（避免模块导入问题）
+    getAuthManager() {
+      return {
+        isLoggedIn() {
+          try {
+            const token = uni.getStorageSync('user_token')
+            const userInfo = uni.getStorageSync('user_info')
+            const isLoggedIn = uni.getStorageSync('is_logged_in')
+            return !!(token && userInfo && userInfo.openid && isLoggedIn)
+          } catch (error) {
+            console.error('[AuthManager] 检查登录状态失败:', error)
+            return false
+          }
+        },
+        
+        getCurrentUser() {
+          try {
+            if (!this.isLoggedIn()) {
+              return null
+            }
+            return uni.getStorageSync('user_info') || null
+          } catch (error) {
+            console.error('[AuthManager] 获取用户信息失败:', error)
+            return null
+          }
+        },
+        
+        async checkUserInSupabase(openid) {
+          try {
+            console.log('[AuthManager] 检查用户是否存在于Supabase:', openid)
+            
+            const result = await new Promise((resolve, reject) => {
+              uniCloud.callFunction({
+                name: 'learningGroupAPI',
+                data: {
+                  action: 'getUserInfo',
+                  openid: openid
+                },
+                success: (res) => {
+                  if (res.result && res.result.success) {
+                    console.log('[AuthManager] 用户存在于Supabase:', res.result.data)
+                    resolve(true)
+                  } else {
+                    console.log('[AuthManager] 用户不存在于Supabase')
+                    resolve(false)
+                  }
+                },
+                fail: (error) => {
+                  console.error('[AuthManager] 检查用户失败:', error)
+                  resolve(false)
+                }
+              })
+            })
+            
+            return result
+          } catch (error) {
+            console.error('[AuthManager] 检查用户异常:', error)
+            return false
+          }
+        },
+        
+        async syncUserToSupabase(userInfo) {
+          try {
+            console.log('[AuthManager] 开始同步用户到Supabase:', userInfo)
+            
+            const result = await new Promise((resolve, reject) => {
+              uniCloud.callFunction({
+                name: 'learningGroupAPI',
+                data: {
+                  action: 'createUser',
+                  openid: userInfo.openid,
+                  nickname: userInfo.nickname || userInfo.name || '微信用户',
+                  avatarUrl: userInfo.avatar_url || userInfo.avatarUrl || '',
+                  bio: userInfo.bio || ''
+                },
+                success: (res) => {
+                  if (res.result && res.result.success) {
+                    console.log('[AuthManager] 用户同步成功:', res.result.data)
+                    resolve(res.result.data)
+                  } else {
+                    reject(new Error(res.result?.error || '同步用户失败'))
+                  }
+                },
+                fail: (error) => {
+                  console.error('[AuthManager] 同步用户失败:', error)
+                  reject(error)
+                }
+              })
+            })
+            
+            return result
+          } catch (error) {
+            console.error('[AuthManager] 同步用户异常:', error)
+            throw error
+          }
+        },
+        
+        async ensureUserSynced() {
+          console.log('[AuthManager] 开始确保用户已同步')
+          
+          // 1. 检查登录状态
+          if (!this.isLoggedIn()) {
+            console.log('[AuthManager] 用户未登录，跳过同步')
+            return null
+          }
+
+          const currentUser = this.getCurrentUser()
+          if (!currentUser || !currentUser.openid) {
+            console.log('[AuthManager] 无效用户信息，跳过同步')
+            return null
+          }
+
+          // 2. 检查用户是否已存在于Supabase
+          const exists = await this.checkUserInSupabase(currentUser.openid)
+          
+          if (exists) {
+            console.log('[AuthManager] 用户已存在于Supabase，无需同步')
+            return currentUser
+          }
+          
+          // 3. 用户不存在，进行同步
+          console.log('[AuthManager] 用户不存在于Supabase，开始同步...')
+          try {
+            const syncResult = await this.syncUserToSupabase(currentUser)
+            
+            // 4. 更新本地用户信息
+            const updatedUserInfo = Object.assign({}, currentUser, syncResult)
+            uni.setStorageSync('user_info', updatedUserInfo)
+            
+            console.log('[AuthManager] 用户同步完成，本地信息已更新:', updatedUserInfo)
+            return updatedUserInfo
+          } catch (syncError) {
+            console.error('[AuthManager] 用户同步失败:', syncError)
+            // 同步失败时返回原用户信息，不影响页面功能
+            return currentUser
+          }
+        },
+        
+        async initPageAuth(options = {}) {
+          const {
+            requireAuth = true,
+            autoSync = true,
+          } = options
+
+          try {
+            console.log('[AuthManager] 开始页面认证初始化')
+
+            // 1. 检查登录状态
+            if (!this.isLoggedIn()) {
+              console.log('[AuthManager] 用户未登录')
+              if (requireAuth) {
+                return null
+              }
+              return null
+            }
+
+            // 2. 获取用户信息
+            const userInfo = this.getCurrentUser()
+            if (!userInfo) {
+              console.log('[AuthManager] 获取用户信息失败')
+              if (requireAuth) {
+                return null
+              }
+              return null
+            }
+
+            // 3. 自动同步到Supabase
+            if (autoSync) {
+              try {
+                const syncedUser = await this.ensureUserSynced()
+                console.log('[AuthManager] 页面认证初始化完成，用户已同步')
+                return syncedUser
+              } catch (syncError) {
+                console.warn('[AuthManager] 用户同步失败，但继续页面加载:', syncError.message)
+                return userInfo // 同步失败时返回本地用户信息
+              }
+            }
+
+            console.log('[AuthManager] 页面认证初始化完成')
+            return userInfo
+
+          } catch (error) {
+            console.error('[AuthManager] 页面认证初始化失败:', error)
+            return null
+          }
+        }
+      }
+    },
+    
     initPage() {
       try {
         this.checkLoginStatus()
@@ -215,24 +440,34 @@ export default {
     
     checkLoginStatus() {
       try {
-        const token = uni.getStorageSync('token')
-        if (token) {
+        // 使用与StorageManager一致的键名
+        const token = uni.getStorageSync('user_token')
+        const userInfo = uni.getStorageSync('user_info')
+        const isLoggedIn = uni.getStorageSync('is_logged_in')
+        
+        if (token && userInfo && isLoggedIn) {
           this.isLoggedIn = true
           this.hasRedirected = false
-          console.log('用户已登录')
+          console.log('[首页] 用户已登录')
+          
+          // 设置用户信息到页面数据中
+          this.userInfo = {
+            name: userInfo.nickname || userInfo.name || '学习达人',
+            avatar: userInfo.avatar_url || userInfo.avatarUrl || ''
+          }
         } else if (!this.hasRedirected) {
           this.hasRedirected = true
-          console.log('用户未登录，跳转到登录页')
+          console.log('[首页] 用户未登录，跳转到登录页')
           uni.reLaunch({
             url: '/pages/login/login',
             fail: (err) => {
-              console.error('跳转登录页失败:', err)
+              console.error('[首页] 跳转登录页失败:', err)
               this.notifyError('登录跳转失败', '请手动进入登录页面')
             }
           })
         }
       } catch (error) {
-        console.error('检查登录状态失败:', error)
+        console.error('[首页] 检查登录状态失败:', error)
         this.isLoggedIn = false
       }
     },
@@ -240,17 +475,27 @@ export default {
     // 安全的登录状态检查，不会影响tabBar跳转
     checkLoginStatusSafe() {
       try {
-        const token = uni.getStorageSync('token')
-        if (token) {
+        // 使用与StorageManager一致的键名
+        const token = uni.getStorageSync('user_token')
+        const userInfo = uni.getStorageSync('user_info')
+        const isLoggedIn = uni.getStorageSync('is_logged_in')
+        
+        if (token && userInfo && isLoggedIn) {
           this.isLoggedIn = true
           this.hasRedirected = false
-          console.log('用户已登录')
+          console.log('[首页] 用户已登录')
+          
+          // 设置用户信息到页面数据中
+          this.userInfo = {
+            name: userInfo.nickname || userInfo.name || '学习达人',
+            avatar: userInfo.avatar_url || userInfo.avatarUrl || ''
+          }
         } else {
           // 显示登录提示而不是强制跳转
           this.showLoginPrompt()
         }
       } catch (error) {
-        console.error('检查登录状态失败:', error)
+        console.error('[首页] 检查登录状态失败:', error)
         this.isLoggedIn = false
       }
     },

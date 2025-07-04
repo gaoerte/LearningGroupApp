@@ -398,30 +398,92 @@ async function createTestGroup(groupData) {
  * 发送测试消息
  */
 async function sendTestMessage(messageData) {
-  console.log('💬 发送测试消息...');
+  console.log('💬 发送测试消息...', messageData);
   
-  const defaultData = {
-    content: '这是一条测试消息',
-    type: 'text',
-    sender_name: '测试用户'
-  };
-  
-  const finalData = { ...defaultData, ...messageData };
-  
-  const { data, error } = await supabase
-    .from('chat_messages')
-    .insert([finalData])
-    .select()
-    .single();
+  try {
+    const { content, groupId, senderId, senderName } = messageData;
     
-  if (error) {
-    throw new Error(`发送消息失败: ${error.message}`);
+    // 验证必要参数
+    if (!content || !senderName) {
+      throw new Error('缺少必要参数: content, senderName');
+    }
+    
+    // 构建插入数据
+    const insertData = {
+      content: content.trim(),
+      sender_name: senderName
+    };
+    
+    // 处理 group_id - 如果传入的不是UUID，则查找数据库中的第一个群组
+    if (groupId) {
+      // 检查是否是有效的UUID格式
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      if (uuidRegex.test(groupId)) {
+        // 是有效UUID，直接使用
+        insertData.group_id = groupId;
+      } else {
+        // 不是UUID，查找数据库中的第一个群组
+        console.log('🔍 groupId 不是有效UUID，查找数据库中的群组...');
+        const { data: groups, error: groupError } = await supabase
+          .from('study_groups')
+          .select('id')
+          .limit(1);
+          
+        if (groupError || !groups || groups.length === 0) {
+          console.log('⚠️ 未找到群组，跳过 group_id');
+        } else {
+          insertData.group_id = groups[0].id;
+          console.log('✅ 使用群组ID:', groups[0].id);
+        }
+      }
+    }
+    
+    // 处理 sender_id - 如果传入的不是UUID，则查找数据库中的第一个用户
+    if (senderId) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      if (uuidRegex.test(senderId)) {
+        insertData.sender_id = senderId;
+      } else {
+        console.log('🔍 senderId 不是有效UUID，查找数据库中的用户...');
+        const { data: users, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .limit(1);
+          
+        if (userError || !users || users.length === 0) {
+          console.log('⚠️ 未找到用户，跳过 sender_id');
+        } else {
+          insertData.sender_id = users[0].id;
+          console.log('✅ 使用用户ID:', users[0].id);
+        }
+      }
+    }
+    
+    console.log('📝 插入数据:', insertData);
+    
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert([insertData])
+      .select()
+      .single();
+      
+    if (error) {
+      throw new Error(`发送消息失败: ${error.message}`);
+    }
+    
+    console.log('✅ 消息发送成功:', data);
+    
+    return {
+      message: data,
+      sent: true
+    };
+    
+  } catch (e) {
+    console.error('❌ sendTestMessage 失败:', e);
+    throw e;
   }
-  
-  return {
-    message: data,
-    sent: true
-  };
 }
 
 /**

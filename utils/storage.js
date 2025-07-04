@@ -22,19 +22,52 @@ export class StorageManager {
   
   /**
    * 保存登录信息
-   * @param {Object} loginData - 登录数据
+   * @param {Object} loginData - 登录数据，支持多种数据结构
    */
   static saveLoginData(loginData) {
     try {
-      const { user, openid, token, login_time } = loginData;
+      console.log('[Storage] 原始登录数据:', loginData);
       
-      console.log('[Storage] 保存登录信息:', { openid, token, login_time });
+      let userInfo, token, loginTime, openid;
+      
+      // 兼容 UserAPI 返回的数据结构
+      if (loginData.userInfo && loginData.token) {
+        userInfo = loginData.userInfo;
+        token = loginData.token;
+        loginTime = loginData.loginTime;
+        openid = loginData.userInfo.openid;
+      } 
+      // 兼容旧版数据结构
+      else if (loginData.user && loginData.token) {
+        userInfo = loginData.user;
+        token = loginData.token;
+        loginTime = loginData.login_time;
+        openid = loginData.openid || loginData.user.openid;
+      }
+      // 直接传递的数据结构
+      else {
+        userInfo = loginData.user || loginData.userInfo;
+        token = loginData.token;
+        loginTime = loginData.login_time || loginData.loginTime;
+        openid = loginData.openid || (userInfo && userInfo.openid);
+      }
+      
+      if (!userInfo || !token || !openid) {
+        throw new Error('登录数据缺少必要字段: userInfo, token, openid');
+      }
+      
+      console.log('[Storage] 保存登录信息:', { 
+        openid, 
+        token: token.substring(0, 20) + '...', 
+        loginTime,
+        userInfo: userInfo.nickname || userInfo.name 
+      });
       
       // 保存基本信息
       uni.setStorageSync(STORAGE_KEYS.USER_TOKEN, token);
       uni.setStorageSync(STORAGE_KEYS.USER_OPENID, openid);
-      uni.setStorageSync(STORAGE_KEYS.USER_INFO, user);
-      uni.setStorageSync(STORAGE_KEYS.LOGIN_TIME, login_time);
+      uni.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo);
+      uni.setStorageSync(STORAGE_KEYS.LOGIN_TIME, loginTime);
       uni.setStorageSync(STORAGE_KEYS.IS_LOGGED_IN, true);
       
       console.log('[Storage] 登录信息保存成功');
@@ -80,8 +113,27 @@ export class StorageManager {
    */
   static isLoggedIn() {
     try {
+      const token = uni.getStorageSync(STORAGE_KEYS.USER_TOKEN);
+      const openid = uni.getStorageSync(STORAGE_KEYS.USER_OPENID);
+      const userInfo = uni.getStorageSync(STORAGE_KEYS.USER_INFO);
+      const loginTime = uni.getStorageSync(STORAGE_KEYS.LOGIN_TIME);
+      const isLoggedIn = uni.getStorageSync(STORAGE_KEYS.IS_LOGGED_IN);
+      
+      console.log('[Storage] 登录状态检查:', {
+        hasToken: !!token,
+        hasOpenid: !!openid,
+        hasUserInfo: !!userInfo,
+        hasLoginTime: !!loginTime,
+        isLoggedInFlag: isLoggedIn,
+        tokenPrefix: token ? token.substring(0, 20) + '...' : null,
+        userNickname: userInfo ? userInfo.nickname || userInfo.name : null
+      });
+      
       const loginData = this.getLoginData();
-      return loginData !== null && loginData.isLoggedIn === true;
+      const result = loginData !== null && loginData.isLoggedIn === true;
+      
+      console.log('[Storage] 最终登录状态:', result);
+      return result;
     } catch (error) {
       console.error('[Storage] 检查登录状态失败:', error);
       return false;

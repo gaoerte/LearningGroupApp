@@ -14,7 +14,7 @@
     </view>
 
     <!-- 兴趣选择卡片 -->
-    <modern-card class="interest-card" shadow="medium">
+    <modern-card class="interest-card" shadow="md">
       <view class="interest-header">
         <view class="interest-icon">🎯</view>
         <view class="interest-info">
@@ -33,6 +33,18 @@
       </view>
     </modern-card>
 
+    <!-- 快速创建群组卡片 -->
+    <modern-card class="create-group-card" shadow="md" :clickable="true" @tap="goToCreateGroup">
+      <view class="create-content">
+        <view class="create-icon">✨</view>
+        <view class="create-info">
+          <text class="create-title">找不到合适的群组？</text>
+          <text class="create-desc">创建你自己的学习小组，邀请志同道合的伙伴</text>
+        </view>
+        <view class="create-arrow">›</view>
+      </view>
+    </modern-card>
+
     <!-- 推荐小组列表 -->
     <view class="groups-section" v-if="recommendedGroups.length > 0">
       <view class="section-header">
@@ -45,7 +57,7 @@
           v-for="(group, index) in recommendedGroups" 
           :key="index"
           class="group-card"
-          shadow="medium"
+          shadow="md"
           hover
         >
           <view class="group-header">
@@ -136,8 +148,71 @@
 <script>
 import ModernCard from '../../components/ModernCard.vue'
 import ModernButton from '../../components/ModernButton.vue'
-import { GroupAPI } from '../../api/groupAPI.js';
-import { StorageManager } from '../../utils/storage.js';
+
+// 内联 API 定义 - 避免模块导入问题
+function createLocalAPI() {
+  return {
+    cloudFunctionName: 'learningGroupAPI',
+    currentUser: null,
+    
+    callCloudFunction: function(action, params) {
+      params = params || {};
+      
+      return new Promise(function(resolve, reject) {
+        console.log('[API] 调用云函数 ' + action + ':', params);
+        
+        uniCloud.callFunction({
+          name: 'learningGroupAPI',
+          data: Object.assign({ action: action }, params)
+        }).then(function(result) {
+          console.log('[API] ' + action + ' 云函数响应:', result);
+          
+          if (result.result && result.result.success) {
+            resolve(result.result.data);
+          } else {
+            reject(new Error((result.result && result.result.error) || '调用失败'));
+          }
+        }).catch(function(error) {
+          console.error('[API] ' + action + ' 云函数调用失败:', error);
+          reject(error);
+        });
+      });
+    },
+    
+    getGroups: function(category, limit, offset) {
+      return this.callCloudFunction('getGroups', {
+        category: category || null,
+        limit: limit || 20,
+        offset: offset || 0
+      });
+    },
+    
+    joinGroup: function(groupId) {
+      if (!this.currentUser) {
+        return Promise.reject(new Error('用户未登录'));
+      }
+      
+      return this.callCloudFunction('joinGroup', {
+        groupId: groupId,
+        userOpenid: this.currentUser.openid
+      });
+    },
+    
+    getCurrentUser: function() {
+      return this.currentUser;
+    },
+    
+    isLoggedIn: function() {
+      return this.currentUser !== null;
+    }
+  };
+}
+
+// 获取 API 实例
+const getLearningGroupAPI = () => {
+  console.log('[群组匹配] 创建内联API实例');
+  return createLocalAPI();
+};
 
 export default {
   components: {
@@ -156,74 +231,330 @@ export default {
   },
   async onLoad() {
     console.log('[群组匹配] onLoad 开始');
-    await this.initPage();
+    await this.initPageWithAuth();
   },
   methods: {
+    // 集成认证管理器的页面初始化方法
+    async initPageWithAuth() {
+      try {
+        console.log('[群组匹配] 开始页面认证初始化')
+        
+        // 1. 内联定义认证管理器（避免模块导入问题）
+        const authManager = this.getAuthManager()
+        
+        // 2. 进行页面认证初始化（自动同步用户到Supabase）
+        const userInfo = await authManager.initPageAuth({
+          requireAuth: true,  // 群组匹配页面要求登录
+          autoSync: true,     // 自动同步到Supabase
+        })
+        
+        if (userInfo) {
+          this.currentUserId = userInfo.id || userInfo.openid
+          console.log('[群组匹配] 用户认证完成，已同步到Supabase:', userInfo)
+          
+          // 初始化 API 用户信息
+          const learningGroupAPI = getLearningGroupAPI();
+          if (learningGroupAPI) {
+            learningGroupAPI.currentUser = userInfo;
+            console.log('[群组匹配] API 用户信息已设置');
+          }
+          
+          // 3. 加载推荐群组
+          await this.loadRecommendedGroups()
+        } else {
+          console.log('[群组匹配] 用户认证失败，跳转到登录页')
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+          });
+          setTimeout(() => {
+            uni.reLaunch({
+              url: '/pages/login/login'
+            });
+          }, 1500);
+        }
+        
+      } catch (error) {
+        console.error('[群组匹配] 页面认证初始化失败:', error)
+        uni.showToast({
+          title: '初始化失败',
+          icon: 'none'
+        });
+      }
+    },
+    
+    // 内联认证管理器（避免模块导入问题）
+    getAuthManager() {
+      return {
+        isLoggedIn() {
+          try {
+            const token = uni.getStorageSync('user_token')
+            const userInfo = uni.getStorageSync('user_info')
+            const isLoggedIn = uni.getStorageSync('is_logged_in')
+            return !!(token && userInfo && userInfo.openid && isLoggedIn)
+          } catch (error) {
+            console.error('[AuthManager] 检查登录状态失败:', error)
+            return false
+          }
+        },
+        
+        getCurrentUser() {
+          try {
+            if (!this.isLoggedIn()) {
+              return null
+            }
+            return uni.getStorageSync('user_info') || null
+          } catch (error) {
+            console.error('[AuthManager] 获取用户信息失败:', error)
+            return null
+          }
+        },
+        
+        async checkUserInSupabase(openid) {
+          try {
+            console.log('[AuthManager] 检查用户是否存在于Supabase:', openid)
+            
+            const result = await new Promise((resolve, reject) => {
+              uniCloud.callFunction({
+                name: 'learningGroupAPI',
+                data: {
+                  action: 'getUserInfo',
+                  openid: openid
+                },
+                success: (res) => {
+                  if (res.result && res.result.success) {
+                    console.log('[AuthManager] 用户存在于Supabase:', res.result.data)
+                    resolve(true)
+                  } else {
+                    console.log('[AuthManager] 用户不存在于Supabase')
+                    resolve(false)
+                  }
+                },
+                fail: (error) => {
+                  console.error('[AuthManager] 检查用户失败:', error)
+                  resolve(false)
+                }
+              })
+            })
+            
+            return result
+          } catch (error) {
+            console.error('[AuthManager] 检查用户异常:', error)
+            return false
+          }
+        },
+        
+        async syncUserToSupabase(userInfo) {
+          try {
+            console.log('[AuthManager] 开始同步用户到Supabase:', userInfo)
+            
+            const result = await new Promise((resolve, reject) => {
+              uniCloud.callFunction({
+                name: 'learningGroupAPI',
+                data: {
+                  action: 'createUser',
+                  openid: userInfo.openid,
+                  nickname: userInfo.nickname || userInfo.name || '微信用户',
+                  avatarUrl: userInfo.avatar_url || userInfo.avatarUrl || '',
+                  bio: userInfo.bio || ''
+                },
+                success: (res) => {
+                  if (res.result && res.result.success) {
+                    console.log('[AuthManager] 用户同步成功:', res.result.data)
+                    resolve(res.result.data)
+                  } else {
+                    reject(new Error(res.result?.error || '同步用户失败'))
+                  }
+                },
+                fail: (error) => {
+                  console.error('[AuthManager] 同步用户失败:', error)
+                  reject(error)
+                }
+              })
+            })
+            
+            return result
+          } catch (error) {
+            console.error('[AuthManager] 同步用户异常:', error)
+            throw error
+          }
+        },
+        
+        async ensureUserSynced() {
+          console.log('[AuthManager] 开始确保用户已同步')
+          
+          // 1. 检查登录状态
+          if (!this.isLoggedIn()) {
+            console.log('[AuthManager] 用户未登录，跳过同步')
+            return null
+          }
+
+          const currentUser = this.getCurrentUser()
+          if (!currentUser || !currentUser.openid) {
+            console.log('[AuthManager] 无效用户信息，跳过同步')
+            return null
+          }
+
+          // 2. 检查用户是否已存在于Supabase
+          const exists = await this.checkUserInSupabase(currentUser.openid)
+          
+          if (exists) {
+            console.log('[AuthManager] 用户已存在于Supabase，无需同步')
+            return currentUser
+          }
+          
+          // 3. 用户不存在，进行同步
+          console.log('[AuthManager] 用户不存在于Supabase，开始同步...')
+          try {
+            const syncResult = await this.syncUserToSupabase(currentUser)
+            
+            // 4. 更新本地用户信息
+            const updatedUserInfo = Object.assign({}, currentUser, syncResult)
+            uni.setStorageSync('user_info', updatedUserInfo)
+            
+            console.log('[AuthManager] 用户同步完成，本地信息已更新:', updatedUserInfo)
+            return updatedUserInfo
+          } catch (syncError) {
+            console.error('[AuthManager] 用户同步失败:', syncError)
+            // 同步失败时返回原用户信息，不影响页面功能
+            return currentUser
+          }
+        },
+        
+        async initPageAuth(options = {}) {
+          const {
+            requireAuth = true,
+            autoSync = true,
+          } = options
+
+          try {
+            console.log('[AuthManager] 开始页面认证初始化')
+
+            // 1. 检查登录状态
+            if (!this.isLoggedIn()) {
+              console.log('[AuthManager] 用户未登录')
+              return null
+            }
+
+            // 2. 获取用户信息
+            const userInfo = this.getCurrentUser()
+            if (!userInfo) {
+              console.log('[AuthManager] 获取用户信息失败')
+              return null
+            }
+
+            // 3. 自动同步到Supabase
+            if (autoSync) {
+              try {
+                const syncedUser = await this.ensureUserSynced()
+                console.log('[AuthManager] 页面认证初始化完成，用户已同步')
+                return syncedUser
+              } catch (syncError) {
+                console.warn('[AuthManager] 用户同步失败，但继续页面加载:', syncError.message)
+                return userInfo // 同步失败时返回本地用户信息
+              }
+            }
+
+            console.log('[AuthManager] 页面认证初始化完成')
+            return userInfo
+
+          } catch (error) {
+            console.error('[AuthManager] 页面认证初始化失败:', error)
+            return null
+          }
+        }
+      }
+    },
+    
     async initPage() {
       try {
-        // 检查登录状态
-        const isLoggedIn = StorageManager.isLoggedIn();
-        if (!isLoggedIn) {
+        console.log('[群组匹配] 初始化页面开始');
+        
+        // 检查登录状态 - 使用与StorageManager一致的键名
+        const token = uni.getStorageSync('user_token');
+        const userInfo = uni.getStorageSync('user_info');
+        const isLoggedIn = uni.getStorageSync('is_logged_in');
+        
+        if (!token || !userInfo || !isLoggedIn) {
           console.log('[群组匹配] 用户未登录，跳转到登录页');
-          uni.reLaunch({
-            url: '/pages/login/login'
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
           });
+          setTimeout(() => {
+            uni.reLaunch({
+              url: '/pages/login/login'
+            });
+          }, 1500);
           return;
         }
         
-        // 获取用户信息
-        const userInfo = StorageManager.getUserInfo();
-        this.currentUserId = userInfo ? userInfo.id : null;
+        // 设置用户信息
+        this.currentUserId = userInfo.id || userInfo.openid;
+        console.log('[群组匹配] 当前用户ID:', this.currentUserId);
         
-        if (!this.currentUserId) {
-          throw new Error('无法获取用户ID');
+        // 初始化 API 用户信息
+        const learningGroupAPI = getLearningGroupAPI();
+        if (learningGroupAPI) {
+          learningGroupAPI.currentUser = userInfo;
+          console.log('[群组匹配] API 用户信息已设置');
         }
-        
-        console.log('[群组匹配] 初始化完成，用户ID:', this.currentUserId);
         
         // 加载推荐群组
         await this.loadRecommendedGroups();
         
-        // 添加一些测试数据
-        this.addTestGroups();
-        
       } catch (error) {
-        console.error('[群组匹配] 初始化失败:', error);
-        this.error = error.message;
+        console.error('[群组匹配] 初始化页面失败:', error);
         uni.showToast({
-          title: '页面初始化失败',
+          title: '初始化失败',
           icon: 'none'
         });
       }
     },
     
     async loadRecommendedGroups() {
-      if (!this.currentUserId) {
-        console.warn('[群组匹配] 用户ID不存在，跳过加载推荐群组');
-        return;
-      }
-      
       try {
         console.log('[群组匹配] 开始加载推荐群组');
         this.isLoading = true;
         this.error = null;
         
-        const result = await GroupAPI.getRecommendedGroups(this.currentUserId);
-        
-        if (result.success) {
-          this.recommendedGroups = result.data.groups || [];
-          console.log('[群组匹配] 加载推荐群组成功，数量:', this.recommendedGroups.length);
-        } else {
-          throw new Error(result.error || '加载推荐群组失败');
+        const learningGroupAPI = getLearningGroupAPI();
+        if (!learningGroupAPI) {
+          throw new Error('API 服务不可用');
         }
+        
+        // 确保 API 实例有用户信息 - 使用与StorageManager一致的键名
+        const userInfo = uni.getStorageSync('user_info');
+        if (userInfo) {
+          learningGroupAPI.currentUser = userInfo;
+        }
+        
+        // 获取所有群组作为推荐
+        const groups = await learningGroupAPI.getGroups(null, 20, 0);
+        
+        // 转换数据格式以匹配界面需求
+        this.recommendedGroups = groups.map(group => ({
+          id: group.id,
+          name: group.name,
+          description: group.description || '暂无描述',
+          interest: group.category || 'general',
+          memberCount: group.member_count ? group.member_count.length : 0,
+          createTime: this.formatTime(group.created_at),
+          activity: '活跃度高',
+          level: '适合所有人'
+        }));
+        
+        console.log('[群组匹配] 加载推荐群组成功，数量:', this.recommendedGroups.length);
         
       } catch (error) {
         console.error('[群组匹配] 加载推荐群组失败:', error);
         this.error = error.message;
         
-        // 显示友好的错误提示
+        // 降级到模拟数据
+        this.addTestGroups();
+        
         uni.showToast({
-          title: '加载推荐失败',
+          title: '加载推荐失败，显示示例数据',
           icon: 'none'
         });
         
@@ -248,6 +579,11 @@ export default {
         console.log('[群组匹配] 根据分类搜索群组:', this.selectedInterest);
         this.isLoading = true;
         
+        const learningGroupAPI = getLearningGroupAPI();
+        if (!learningGroupAPI) {
+          throw new Error('API 服务不可用');
+        }
+        
         const categoryMap = {
           '编程技术': 'programming',
           '语言学习': 'language',
@@ -259,14 +595,22 @@ export default {
         
         const category = categoryMap[this.selectedInterest] || 'other';
         
-        const result = await GroupAPI.searchGroups('', category);
+        // 使用新API搜索群组
+        const groups = await learningGroupAPI.getGroups(category, 20, 0);
         
-        if (result.success) {
-          this.recommendedGroups = result.data.groups || [];
-          console.log('[群组匹配] 搜索群组成功，数量:', this.recommendedGroups.length);
-        } else {
-          throw new Error(result.error || '搜索群组失败');
-        }
+        // 转换数据格式
+        this.recommendedGroups = groups.map(group => ({
+          id: group.id,
+          name: group.name,
+          description: group.description || '暂无描述',
+          interest: group.category || 'general',
+          memberCount: group.member_count || 0,
+          createTime: this.formatTime(group.created_at),
+          activity: '活跃度高',
+          level: '适合所有人'
+        }));
+        
+        console.log('[群组匹配] 搜索群组成功，数量:', this.recommendedGroups.length);
         
       } catch (error) {
         console.error('[群组匹配] 搜索群组失败:', error);
@@ -353,31 +697,37 @@ export default {
           title: '正在加入...'
         });
         
+        const learningGroupAPI = getLearningGroupAPI();
+        if (!learningGroupAPI) {
+          throw new Error('API 服务不可用');
+        }
+        
+        // 确保 API 实例有用户信息 - 使用与StorageManager一致的键名
+        const userInfo = uni.getStorageSync('user_info');
+        if (userInfo) {
+          learningGroupAPI.currentUser = userInfo;
+        }
+        
         // 调用加入群组API
-        const result = await GroupAPI.joinGroup(group.id, this.currentUserId);
+        await learningGroupAPI.joinGroup(group.id, this.currentUserId);
         
         uni.hideLoading();
         
-        if (result.success) {
-          console.log('[群组匹配] 加入群组成功:', result);
-          
-          // 显示成功提示
-          uni.showToast({
-            title: '加入成功！',
-            icon: 'success',
-            duration: 1500
+        console.log('[群组匹配] 加入群组成功');
+        
+        // 显示成功提示
+        uni.showToast({
+          title: '加入成功！',
+          icon: 'success',
+          duration: 1500
+        });
+        
+        // 延迟跳转到群组聊天室
+        setTimeout(() => {
+          uni.navigateTo({
+            url: `/pages/groupChat/groupChat?groupId=${group.id}&groupName=${encodeURIComponent(group.name)}&justJoined=true`
           });
-          
-          // 延迟跳转到群组聊天室
-          setTimeout(() => {
-            uni.navigateTo({
-              url: `/pages/groupChat/groupChat?groupId=${group.id}&groupName=${encodeURIComponent(group.name)}&justJoined=true`
-            });
-          }, 1500);
-          
-        } else {
-          throw new Error(result.error || '加入群组失败');
-        }
+        }, 1500);
         
       } catch (error) {
         console.error('[群组匹配] 加入群组失败:', error);
@@ -402,6 +752,46 @@ export default {
           duration: 2000
         });
       }
+    },
+    
+    /**
+     * 格式化时间
+     */
+    formatTime(timeString) {
+      if (!timeString) return '未知时间';
+      
+      try {
+        const date = new Date(timeString);
+        const now = new Date();
+        const diff = now - date;
+        
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        
+        if (days > 0) {
+          return `${days}天前创建`;
+        } else if (hours > 0) {
+          return `${hours}小时前创建`;
+        } else if (minutes > 0) {
+          return `${minutes}分钟前创建`;
+        } else {
+          return '刚刚创建';
+        }
+      } catch (error) {
+        return '未知时间';
+      }
+    },
+    
+    /**
+     * 跳转到创建群组页面
+     */
+    goToCreateGroup() {
+      console.log('[群组匹配] 跳转到创建群组页面');
+      uni.navigateTo({
+        url: '/pages/createGroup/createGroup'
+      });
     }
   }
 }
@@ -560,6 +950,63 @@ export default {
   font-weight: $font-bold;
   transform: rotate(90deg);
   transition: transform $duration-200 $easing-smooth;
+}
+
+// 创建群组卡片样式
+.create-group-card {
+  margin-bottom: $space-6;
+  border: 2rpx dashed $primary-300;
+  background: linear-gradient(135deg, rgba($primary-50, 0.3), rgba($secondary-50, 0.2));
+  transition: all $duration-300 $easing-smooth;
+  
+  &:active {
+    transform: scale(0.98);
+    border-color: $primary-500;
+    background: linear-gradient(135deg, rgba($primary-100, 0.5), rgba($secondary-100, 0.3));
+  }
+}
+
+.create-content {
+  display: flex;
+  align-items: center;
+  padding: $space-4;
+}
+
+.create-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, $secondary-400, $secondary-500);
+  border-radius: $radius-xl;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  margin-right: $space-4;
+}
+
+.create-info {
+  flex: 1;
+}
+
+.create-title {
+  display: block;
+  font-size: $text-base;
+  font-weight: $font-semibold;
+  color: $text-primary;
+  margin-bottom: $space-1;
+}
+
+.create-desc {
+  display: block;
+  font-size: $text-sm;
+  color: $text-secondary;
+  line-height: 1.4;
+}
+
+.create-arrow {
+  font-size: $text-xl;
+  color: $primary-500;
+  font-weight: $font-bold;
 }
 
 .groups-section {

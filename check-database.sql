@@ -19,17 +19,47 @@ SELECT
 FROM
   chat_messages;
 
--- 2. 显示所有消息（如果有的话）
+-- 2. 显示所有群组和UUID（重要：获取真实群组ID）
+SELECT
+  id,
+  name,
+  creator_id
+FROM
+  study_groups;
+
+-- 3. 显示所有用户和UUID（重要：获取真实用户ID）
+SELECT
+  id,
+  openid,
+  nickname
+FROM
+  users;
+
+-- 4. 显示所有消息（按时间排序）
 SELECT
   id,
   sender_name,
   content,
   group_id,
-  sender_id
+  sender_id,
+  created_at
 FROM
   chat_messages
 ORDER BY
-  id;
+  created_at DESC,
+  id DESC;
+
+-- 5. 显示最新的5条消息
+SELECT
+  sender_name,
+  content,
+  created_at
+FROM
+  chat_messages
+ORDER BY
+  created_at DESC,
+  id DESC
+LIMIT 5;
 
 -- 如果上面的查询显示 chat_messages 有 0 条记录，运行下面的插入语句：
 /*

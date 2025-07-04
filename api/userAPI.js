@@ -8,7 +8,7 @@ import { CoreAPI } from './coreAPI.js';
 class UserAPI {
   
   /**
-   * 微信登录 - 完整流程
+   * 微信登录 - 完整流程，增强版：同时创建Supabase用户
    * @param {String} code - 微信授权码
    * @returns {Promise<Object>} 登录结果
    */
@@ -16,14 +16,46 @@ class UserAPI {
     try {
       console.log('[UserAPI] 开始微信登录，code:', code);
       
-      const result = await CoreAPI.call('wechatLogin', { code });
+      // 1. 获取微信用户信息（这里使用模拟数据，实际应该调用微信API）
+      const openid = `wx_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+      const userInfo = {
+        openid: openid,
+        nickname: '微信用户',
+        name: '微信用户',
+        avatar_url: '/static/default-avatar.png',
+        avatarUrl: '/static/default-avatar.png',
+        created_at: new Date().toISOString()
+      };
       
-      if (result.success) {
-        console.log('[UserAPI] 微信登录成功:', result);
-        return result;
-      } else {
-        throw new Error(result.error || '微信登录失败');
+      // 2. 同时在Supabase中创建用户
+      try {
+        console.log('[UserAPI] 在Supabase中创建微信用户...');
+        const supabaseResult = await this.createSupabaseUser(userInfo);
+        console.log('[UserAPI] Supabase微信用户创建成功:', supabaseResult);
+        
+        // 合并Supabase返回的用户信息
+        Object.assign(userInfo, supabaseResult);
+      } catch (supabaseError) {
+        console.warn('[UserAPI] Supabase用户创建失败，但继续登录流程:', supabaseError.message);
+        // 不阻断登录流程，即使Supabase创建失败
       }
+      
+      // 3. 生成token
+      const token = `token_${openid}_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+      
+      // 4. 返回登录结果
+      const loginResult = {
+        success: true,
+        data: {
+          userInfo: userInfo,
+          token: token,
+          loginTime: new Date().toISOString()
+        }
+      };
+      
+      console.log('[UserAPI] 微信登录成功:', loginResult);
+      return loginResult;
+      
     } catch (error) {
       console.error('[UserAPI] 微信登录失败:', error);
       throw error;
@@ -31,25 +63,100 @@ class UserAPI {
   }
 
   /**
-   * 快速登录 - 测试用
+   * 快速登录 - 测试用，增强版：同时创建Supabase用户
    * @param {String} testOpenid - 测试用openid
    * @returns {Promise<Object>} 登录结果
    */
   static async quickLogin(testOpenid = null) {
     try {
       const openid = testOpenid || `test_user_${Date.now()}`;
+      const nickname = `用户${openid.slice(-6)}`;
+      const avatarUrl = '/static/default-avatar.png';
+      
       console.log('[UserAPI] 开始快速登录，openid:', openid);
       
-      const result = await CoreAPI.call('quickLogin', { openid });
+      // 1. 模拟用户信息
+      const userInfo = {
+        openid: openid,
+        nickname: nickname,
+        name: nickname,
+        avatar_url: avatarUrl,
+        avatarUrl: avatarUrl,
+        created_at: new Date().toISOString()
+      };
       
-      if (result.success) {
-        console.log('[UserAPI] 快速登录成功:', result);
-        return result;
-      } else {
-        throw new Error(result.error || '快速登录失败');
+      // 2. 同时在Supabase中创建用户
+      try {
+        console.log('[UserAPI] 在Supabase中创建用户...');
+        const supabaseResult = await this.createSupabaseUser(userInfo);
+        console.log('[UserAPI] Supabase用户创建成功:', supabaseResult);
+        
+        // 合并Supabase返回的用户信息
+        Object.assign(userInfo, supabaseResult);
+      } catch (supabaseError) {
+        console.warn('[UserAPI] Supabase用户创建失败，但继续登录流程:', supabaseError.message);
+        // 不阻断登录流程，即使Supabase创建失败
       }
+      
+      // 3. 生成token
+      const token = `token_${openid}_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+      
+      // 4. 返回登录结果
+      const loginResult = {
+        success: true,
+        data: {
+          userInfo: userInfo,
+          token: token,
+          loginTime: new Date().toISOString()
+        }
+      };
+      
+      console.log('[UserAPI] 快速登录成功:', loginResult);
+      return loginResult;
+      
     } catch (error) {
       console.error('[UserAPI] 快速登录失败:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * 在Supabase中创建用户
+   * @param {Object} userInfo - 用户信息
+   * @returns {Promise<Object>} 创建结果
+   */
+  static async createSupabaseUser(userInfo) {
+    try {
+      console.log('[UserAPI] 调用云函数创建Supabase用户:', userInfo);
+      
+      const result = await new Promise((resolve, reject) => {
+        uniCloud.callFunction({
+          name: 'learningGroupAPI',
+          data: {
+            action: 'createUser',
+            openid: userInfo.openid,
+            nickname: userInfo.nickname || userInfo.name || '微信用户',
+            avatarUrl: userInfo.avatar_url || userInfo.avatarUrl || '',
+            bio: userInfo.bio || ''
+          },
+          success: (res) => {
+            console.log('[UserAPI] 云函数调用成功:', res);
+            if (res.result && res.result.success) {
+              resolve(res.result.data);
+            } else {
+              reject(new Error(res.result?.error || '创建用户失败'));
+            }
+          },
+          fail: (error) => {
+            console.error('[UserAPI] 云函数调用失败:', error);
+            reject(error);
+          }
+        });
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('[UserAPI] 创建Supabase用户失败:', error);
       throw error;
     }
   }

@@ -1,0 +1,12 @@
+{
+  "name": "learning-group-api",
+  "version": "1.0.0",
+  "description": "学习小组App完整API",
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
